@@ -24,6 +24,7 @@ public class VideoPlayer : MonoBehaviour
 
         // Sets quality settings to reduce lag while playing video
         prevVSynch = QualitySettings.vSyncCount;
+        QualitySettings.antiAliasing = 0;
         QualitySettings.vSyncCount = 0;
 
         // Plays the clip

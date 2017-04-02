@@ -42,7 +42,7 @@
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				UNITY_TRANSFER_FOG(o,o.vertex);
-				v.uv.x = 1 - v.uv.x;
+				v.uv.x = 1 - v.uv.x ;
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
 				return o;
