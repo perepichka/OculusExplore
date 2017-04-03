@@ -17,7 +17,6 @@ public class KinectViewer : MonoBehaviour
     private const int _DownsampleSize = 2;
 
     private const double _DepthScale = 0.1f;
-    private const int _Speed = 100;
     
     private KinectSource _MultiManager;
 
@@ -88,17 +87,7 @@ public class KinectViewer : MonoBehaviour
         {
             return;
         }
-        
-        float yVal = Input.GetAxis("Horizontal");
-        float xVal = -Input.GetAxis("Vertical");
-
-        transform.Rotate(
-            (xVal * Time.deltaTime * _Speed), 
-            (yVal * Time.deltaTime * _Speed), 
-            0, 
-            Space.Self);
-
-
+			
         if (KinectSource == null)
         {
             return;
