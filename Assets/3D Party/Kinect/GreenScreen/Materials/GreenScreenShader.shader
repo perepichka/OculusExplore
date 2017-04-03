@@ -1,4 +1,6 @@
-﻿Shader "DX11/GreenScreenShader" {
+﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+Shader "DX11/GreenScreenShader" {
 SubShader {
 Pass {
 
@@ -30,7 +32,7 @@ struct ps_input {
 ps_input vert (vs_input v)
 {
 	ps_input o;
-	o.pos = mul (UNITY_MATRIX_MVP, v.pos);
+	o.pos = UnityObjectToClipPos (v.pos);
 	o.tex = v.tex;
 	// Flip x texture coordinate to mimic mirror.
 	o.tex.x = 1 - v.tex.x;
