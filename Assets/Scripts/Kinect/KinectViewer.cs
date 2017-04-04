@@ -14,7 +14,7 @@ public class KinectViewer : MonoBehaviour
     private int[] _Triangles;
     
     // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
-    private const int _DownsampleSize = 2;
+    private const int _DownsampleSize = 4;
 
     private const double _DepthScale = 0.1f;
     
