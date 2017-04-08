@@ -16,12 +16,11 @@
 //  You should have received a copy of the GNU General Public License 
 //  along with this program.If not, see<http://www.gnu.org/licenses/>.
 //  =====================================================================
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Sticher : MonoBehaviour {
+public class VideoHelper : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
