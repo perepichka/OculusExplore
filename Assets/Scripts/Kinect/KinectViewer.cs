@@ -27,61 +27,62 @@ public class KinectViewer : MonoBehaviour
 { 
     public GameObject KinectSource;
     
-    private KinectSensor _Sensor;
-    private CoordinateMapper _Mapper;
+    private KinectSensor _sensor;
+    private CoordinateMapper _mapper;
 
-    private Mesh _Mesh;
+    private Mesh _mesh;
 
 	// Since Unity has hard limit of 65k vertices per mesh, we will need multiple meshes
 	// in order to fit the Mesh within unity without downsampling
-	private Mesh[] Meshes;
+	private Mesh[] _Meshes;
 
-    private Vector3[] _Vertices;
-    private Vector2[] _UV;
+    private Vector3[] _vertices;
+    private Vector2[] _uv;
 
 	// Array of Default triangle indices.
-    private int[] DefaultTriangles;
- 
+    private int[] _defaultTriangles;
 
-    private double timeCount = 0.0;
-    private double timeLimit = 1.0;
+    // Source of Kinect info
+    private KinectSource _multiManager;
+
+    private double _timeCount = 0.0;
+    private double _timeLimit = 1.0;
 
     // Max distance between two vertices in a triangle after which it stops being rendered in the mesh
     private int TriangleThreshold = 10;
     
     // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
-    private const int _DownsampleSize = 2;
+    private const int DownSampleSize = 2;
 
-    private const double _DepthScale = 0.1f;
-    
-    private KinectSource _MultiManager;
+    private const double DepthScale = 0.1f;
+
 
     void Start()
     {
-        _Sensor = KinectSensor.GetDefault();
-        if (_Sensor != null)
+        _sensor = KinectSensor.GetDefault();
+        if (_sensor != null)
         {
-            _Mapper = _Sensor.CoordinateMapper;
-            var frameDesc = _Sensor.DepthFrameSource.FrameDescription;
+            _mapper = _sensor.CoordinateMapper;
+            var frameDesc = _sensor.DepthFrameSource.FrameDescription;
 
             // Downsample to lower resolution
-            CreateMesh(frameDesc.Width / _DownsampleSize, frameDesc.Height / _DownsampleSize);
+            CreateMesh(frameDesc.Width / DownSampleSize, frameDesc.Height / DownSampleSize);
 
-            if (!_Sensor.IsOpen)
+            if (!_sensor.IsOpen)
             {
-                _Sensor.Open();
+                _sensor.Open();
             }
         }
     }
 
     void CreateMesh(int width, int height)
     {
-        _Mesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = _Mesh;
+        _mesh = new Mesh();
+        GetComponent<MeshFilter>().mesh = _mesh;
 
-        _Vertices = new Vector3[width * height];
-        _UV = new Vector2[width * height];
-        DefaultTriangles = new int[6 * ((width - 1) * (height - 1))];
+        _vertices = new Vector3[width * height];
+        _uv = new Vector2[width * height];
+        _defaultTriangles = new int[6 * ((width - 1) * (height - 1))];
      
 
         int triangleIndex = 0;
@@ -91,8 +92,8 @@ public class KinectViewer : MonoBehaviour
             {
                 int index = (y * width) + x;
 
-                _Vertices[index] = new Vector3(x, -y, 0);
-                _UV[index] = new Vector2(((float)x / (float)width), ((float)y / (float)height));
+                _vertices[index] = new Vector3(x, -y, 0);
+                _uv[index] = new Vector2(((float)x / (float)width), ((float)y / (float)height));
 
                 // Skip the last row/col
                 if (x != (width - 1) && y != (height - 1))
@@ -102,27 +103,27 @@ public class KinectViewer : MonoBehaviour
                     int bottomLeft = topLeft + width;
                     int bottomRight = bottomLeft + 1;
 
-                    DefaultTriangles[triangleIndex++] = topLeft;
-                    DefaultTriangles[triangleIndex++] = topRight;
-                    DefaultTriangles[triangleIndex++] = bottomLeft;
-                    DefaultTriangles[triangleIndex++] = bottomLeft;
-                    DefaultTriangles[triangleIndex++] = topRight;
-                    DefaultTriangles[triangleIndex++] = bottomRight;
+                    _defaultTriangles[triangleIndex++] = topLeft;
+                    _defaultTriangles[triangleIndex++] = topRight;
+                    _defaultTriangles[triangleIndex++] = bottomLeft;
+                    _defaultTriangles[triangleIndex++] = bottomLeft;
+                    _defaultTriangles[triangleIndex++] = topRight;
+                    _defaultTriangles[triangleIndex++] = bottomRight;
                 }
             }
         }
 
-        _Mesh.vertices = _Vertices;
-        _Mesh.uv = _UV;
-        _Mesh.triangles = DefaultTriangles;
-        _Mesh.RecalculateNormals();
+        _mesh.vertices = _vertices;
+        _mesh.uv = _uv;
+        _mesh.triangles = _defaultTriangles;
+        _mesh.RecalculateNormals();
     }
 
     void Update()
     {
-        timeCount+=Time.deltaTime;
+        _timeCount+=Time.deltaTime;
 
-        if (_Sensor == null)
+        if (_sensor == null)
         {
             return;
         }
@@ -132,68 +133,80 @@ public class KinectViewer : MonoBehaviour
             return;
         }
         
-        _MultiManager = KinectSource.GetComponent<KinectSource>();
+        _multiManager = KinectSource.GetComponent<KinectSource>();
 
-        if (_MultiManager == null)
+        if (_multiManager == null)
         {
             return;
         }
         
-        gameObject.GetComponent<Renderer>().material.mainTexture = _MultiManager.GetColorTexture();
+        gameObject.GetComponent<Renderer>().material.mainTexture = _multiManager.GetColorTexture();
 
-        //if (timeCount > timeLimit)
-        //{
-            //timeCount = 0;
-            RefreshData(_MultiManager.GetDepthData(),
-                _MultiManager.ColorWidth,
-                _MultiManager.ColorHeight);
-//}
+        RefreshData(_multiManager.GetDepthData(),
+            _multiManager.ColorWidth,
+            _multiManager.ColorHeight);
 
 
     }
     
     private void RefreshData(ushort[] depthData, int colorWidth, int colorHeight)
     {
-        var frameDesc = _Sensor.DepthFrameSource.FrameDescription;
+        var frameDesc = _sensor.DepthFrameSource.FrameDescription;
 
         ColorSpacePoint[] colorSpace = new ColorSpacePoint[depthData.Length];
-        _Mapper.MapDepthFrameToColorSpace(depthData, colorSpace);
+        _mapper.MapDepthFrameToColorSpace(depthData, colorSpace);
         
 		// Populates positions of the vertices
-        for (int y = 0; y < frameDesc.Height; y += _DownsampleSize)
+        for (int y = 0; y < frameDesc.Height; y += DownSampleSize)
         {
-            for (int x = 0; x < frameDesc.Width; x += _DownsampleSize)
+            for (int x = 0; x < frameDesc.Width; x += DownSampleSize)
             {
-                int indexX = x / _DownsampleSize;
-                int indexY = y / _DownsampleSize;
-                int smallIndex = (indexY * (frameDesc.Width / _DownsampleSize)) + indexX;
-                
-                double avg = GetAvg(depthData, x, y, frameDesc.Width, frameDesc.Height);
+                int indexX = x / DownSampleSize;
+                int indexY = y / DownSampleSize;
+                int smallIndex = (indexY * (frameDesc.Width / DownSampleSize)) + indexX;
 
-                avg = avg * _DepthScale;
+                // Averages the values
+                double sum = 0.0;
+
+                for (int y1 = y; y1 < y + DownSampleSize; y1++)
+                {
+                    for (int x1 = x; x1 < x + DownSampleSize; x1++)
+                    {
+                        int fullIndex = (y1 * frameDesc.Width) + x1;
+
+                        if (depthData[fullIndex] == 0)
+                            sum += 4500;
+                        else
+                            sum += depthData[fullIndex];
+                    }
+                }
+
+                double avg = sum / Mathf.Pow(DownSampleSize, 2);
+
+                avg = avg * DepthScale;
                 
-				_Vertices[smallIndex].z = (float) (-4500.0 * _DepthScale) + (float)avg;
+				_vertices[smallIndex].z = (float) (-4500.0 * DepthScale) + (float)avg;
                 
                 // Update UV mapping with CDRP
                 var colorSpacePoint = colorSpace[(y * frameDesc.Width) + x];
-                _UV[smallIndex] = new Vector2(colorSpacePoint.X / colorWidth, colorSpacePoint.Y / colorHeight);
+                _uv[smallIndex] = new Vector2(colorSpacePoint.X / colorWidth, colorSpacePoint.Y / colorHeight);
             }
         }
 
         // Loops through Triangles, removing any stretchy ones
         List<int> tempTriangle = new List<int>();
 
-        for (int i = 0; i < DefaultTriangles.Length; i+=3) {
+        for (int i = 0; i < _defaultTriangles.Length; i+=3) {
 			// Check the distance between the vertices in the triangles
-            int triangleV1 = DefaultTriangles[i];
-            int triangleV2 = DefaultTriangles[i + 1];
-            int triangleV3 = DefaultTriangles[i + 2];
+            int triangleV1 = _defaultTriangles[i];
+            int triangleV2 = _defaultTriangles[i + 1];
+            int triangleV3 = _defaultTriangles[i + 2];
 
-            //float distA = Vector3.Distance (_Vertices [triangleV1], _Vertices [triangleV2]);
-			//float distB = Vector3.Distance (_Vertices [triangleV1], _Vertices [triangleV3]);
+            //float distA = Vector3.Distance (_vertices [triangleV1], _vertices [triangleV2]);
+			//float distB = Vector3.Distance (_vertices [triangleV1], _vertices [triangleV3]);
 
-            float distA = Mathf.Abs(_Vertices[triangleV1].z - _Vertices[triangleV2].z);
-            float distB = Mathf.Abs(_Vertices[triangleV1].z - _Vertices[triangleV3].z);
+            float distA = Mathf.Abs(_vertices[triangleV1].z - _vertices[triangleV2].z);
+            float distB = Mathf.Abs(_vertices[triangleV1].z - _vertices[triangleV3].z);
 
             // If under the threshold, push the vertices. Otherwise, don't
             if (distA < TriangleThreshold && distB < TriangleThreshold)
@@ -206,47 +219,27 @@ public class KinectViewer : MonoBehaviour
 
 
         
-        _Mesh.vertices = _Vertices;
-        _Mesh.uv = _UV;
-        _Mesh.triangles = tempTriangle.ToArray();
-        _Mesh.RecalculateNormals();
+        _mesh.vertices = _vertices;
+        _mesh.uv = _uv;
+        _mesh.triangles = tempTriangle.ToArray();
+        _mesh.RecalculateNormals();
     }
-    
-    private double GetAvg(ushort[] depthData, int x, int y, int width, int height)
-    {
-        double sum = 0.0;
-        
-        for (int y1 = y; y1 < y + _DownsampleSize; y1++)
-        {
-            for (int x1 = x; x1 < x + _DownsampleSize; x1++)
-            {
-                int fullIndex = (y1 * width) + x1;
-                
-				if (depthData [fullIndex] == 0)
-					sum += 4500;
-                else
-                    sum += depthData[fullIndex];
-            }
-        }
-
-		return sum / Mathf.Pow(_DownsampleSize, 2);
-    }
-
+  
     void OnApplicationQuit()
     {
-        if (_Mapper != null)
+        if (_mapper != null)
         {
-            _Mapper = null;
+            _mapper = null;
         }
         
-        if (_Sensor != null)
+        if (_sensor != null)
         {
-            if (_Sensor.IsOpen)
+            if (_sensor.IsOpen)
             {
-                _Sensor.Close();
+                _sensor.Close();
             }
 
-            _Sensor = null;
+            _sensor = null;
         }
     }
 }
