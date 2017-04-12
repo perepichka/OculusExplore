@@ -217,8 +217,6 @@ public class KinectViewer : MonoBehaviour
             }
 		}
 
-
-        
         _mesh.vertices = _vertices;
         _mesh.uv = _uv;
         _mesh.triangles = tempTriangle.ToArray();
