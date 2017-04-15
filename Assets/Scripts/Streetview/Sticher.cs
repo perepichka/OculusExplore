@@ -17,19 +17,29 @@
 //  along with this program.If not, see<http://www.gnu.org/licenses/>.
 //  =====================================================================
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Sticher : MonoBehaviour {
+namespace Streetview
+{
+    public class Sticher : MonoBehaviour
+    {
 
-	// Use this for initialization
-	void Start () {
-		
-	}
+        
+        // Texture containing the sphere
+        private Texture sphereTexture;
+
+
+
+        // Use this for initialization
+        void Start () {
+
+            // Initializes the sphere texture
+		    //sphereTexture = new 
+        }
 	
-	// Update is called once per frame
-	void Update () {
+        // Update is called once per frame
+        void Update () {
 		
-	}
+        }
+    }
 }

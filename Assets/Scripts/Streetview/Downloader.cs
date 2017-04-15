@@ -37,7 +37,7 @@ namespace Streetview
 
         // Base URL from which to download the images
         private const string UrlDownloadBase =
-            @"https://geo1.ggpht.com/cbk?cb_client=maps_sv.tactile&authuser=0&hl=en&panoid=";
+            @"http://geo1.ggpht.com/cbk?cb_client=maps_sv.tactile&authuser=0&hl=en&panoid=";
 
         // Other tags that we will need
         private const string UrlDownloadOutput = @"&output=tile";
@@ -56,6 +56,9 @@ namespace Streetview
         // Zoom level controls how zoomed in each individual tile is
         // and subsequently how many tiles are needed in total
         public int ZoomLevel;
+
+        // Memory stream with images
+        public MemoryStream Images;
 
         // Use this for initialization
         void Start ()
@@ -116,7 +119,8 @@ namespace Streetview
                 {
                     string tempDownloadValues = UrlDownloadValues.Replace("X", x.ToString()).Replace("Y", y.ToString()).Replace("Z", zoomLevel.ToString());
                     string tempUrl = UrlDownloadBase + url + UrlDownloadOutput + tempDownloadValues;
-                    string tempFileName = FilePathBase + "tile-x" + x + "-y" + y;
+                    string tempFileName = FilePathBase + "tile-x" + x + "-y" + y + ".jpg";
+
                     DownloadRemoteImageFile(tempUrl, tempFileName);
                 }
             }
@@ -127,7 +131,6 @@ namespace Streetview
         // Downloads image from remote server
         private static void DownloadRemoteImageFile(string uri, string fileName)
         {
-            print(uri);
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
@@ -142,7 +145,6 @@ namespace Streetview
                 response.ContentType.StartsWith("image",StringComparison.OrdinalIgnoreCase))
             {
 
-                // if the remote file was found, download oit
                 using (Stream inputStream = response.GetResponseStream())
                 using (Stream outputStream = System.IO.File.OpenWrite(fileName))
                 {
