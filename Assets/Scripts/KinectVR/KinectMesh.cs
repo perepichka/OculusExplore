@@ -17,19 +17,20 @@
 //  along with this program.If not, see<http://www.gnu.org/licenses/>.
 //  =====================================================================
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class KinectMesh : MonoBehaviour {
+namespace KinectVR
+{
+    public class KinectMesh : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
+        // Use this for initialization
+        void Start () {
 		
-	}
+        }
 	
-	// Update is called once per frame
-	void Update () {
+        // Update is called once per frame
+        void Update () {
 		
-	}
+        }
+    }
 }

@@ -63,8 +63,6 @@ namespace Streetview
         // Use this for initialization
         void Start ()
         {
-            //string apiKey = GameObject.Find("StreetViewManager").GetComponent<ConfigParser>().apiKey;
-            //DownloadRemoteImageFile(BaseUrl + apiKey, FileName);
 
             string tempUrl = ParseUrl(BaseUrl);
 
