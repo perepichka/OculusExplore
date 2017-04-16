@@ -17,6 +17,7 @@
 //  along with this program.If not, see<http://www.gnu.org/licenses/>.
 //  =====================================================================
 
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Video;
@@ -26,13 +27,17 @@ namespace Video
     public class Controller : MonoBehaviour
     {
 
+        public bool IsMono;
+
         public VideoClip VideoClip;
+        public Texture Image;
 
         //
         // Members
         //
 
         // Scene stuff
+        private GameObject _monoSphere;
         private GameObject _leftSphere;
         private GameObject _rightSphere;
 
@@ -47,29 +52,77 @@ namespace Video
             // Gets references to the objects in the scene
             _audioSource = GetComponent<AudioSource>();
             _videoPlayer = GetComponent<UnityEngine.Video.VideoPlayer>();
+
+            // Sets up the Display spheres
             _rightSphere = GameObject.Find("Right Sphere");
             _leftSphere = GameObject.Find("Left Sphere");
+            _monoSphere = GameObject.Find("Mono Sphere");
+
+            // Determines which spheres are to be used
+            if (!IsMono)
+            {
+                _rightSphere.SetActive(true);
+                _leftSphere.SetActive(true);
+                _monoSphere.SetActive(false);
+            }
+            else
+            {
+                _rightSphere.SetActive(false);
+                _leftSphere.SetActive(false);
+                _monoSphere.SetActive(true);
+            }
 
             // Calls coroutine that set up the video
-            StartCoroutine(SetupVideo());
+            if (VideoClip)
+            {
+                StartCoroutine(SetupVideo());
+            }
+            else if (Image)
+            {
+                StartCoroutine(SetupImage());
+            }
+            else
+            {
+                throw new Exception("Both Image and Video fields are unspecified");
+            }
 
         }
 	
         // Update is called once per frame
         void Update () {
-            if (Input.GetKeyDown("space") && _videoPlayer.isPrepared)
+
+            // Video controls
+            if (VideoClip)
             {
-                if (_videoPlayer.isPlaying)
+                if (Input.GetKeyDown("space") && _videoPlayer.isPrepared)
                 {
-                    _videoPlayer.Pause();
+                    if (_videoPlayer.isPlaying)
+                    {
+                        _videoPlayer.Pause();
+                    }
+                    else
+                    {
+                        _videoPlayer.Play();
+                    }
+
                 }
-                else
-                {
-                    _videoPlayer.Play();
-                }
-                
             }
- 
+
+        }
+
+        IEnumerator SetupImage()
+        {
+            if (!IsMono)
+            {
+                _leftSphere.GetComponent<MeshRenderer>().material.mainTexture = Image;
+                _rightSphere.GetComponent<MeshRenderer>().material.mainTexture = Image;
+            }
+            else
+            {
+                _monoSphere.GetComponent<MeshRenderer>().material.mainTexture = Image;
+            }
+
+            yield return null;
         }
 
         IEnumerator SetupVideo()
@@ -81,8 +134,15 @@ namespace Video
             _outputTexture = new RenderTexture((int) _videoPlayer.clip.width, (int) _videoPlayer.clip.height, 24);
 
             // Sets the sphere textures
-            _leftSphere.GetComponent<MeshRenderer>().material.mainTexture = _outputTexture;
-            _rightSphere.GetComponent<MeshRenderer>().material.mainTexture = _outputTexture;
+            if (!IsMono)
+            {
+                _leftSphere.GetComponent<MeshRenderer>().material.mainTexture = _outputTexture;
+                _rightSphere.GetComponent<MeshRenderer>().material.mainTexture = _outputTexture;
+            }
+            else
+            {
+                _monoSphere.GetComponent<MeshRenderer>().material.mainTexture = _outputTexture;
+            }
 
             // Sets the VideoPlayer to render to the created texture
             _videoPlayer.targetTexture = _outputTexture;
