@@ -23,6 +23,8 @@ using UnityEngine;
 
 namespace KinectVR
 {
+  
+
     public class KinectViewer : MonoBehaviour
     { 
         public GameObject KinectSource;
@@ -49,7 +51,7 @@ namespace KinectVR
         private int TriangleThreshold = 10;
     
         // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
-        private const int DownSampleSize = 2;
+        private const int DownSampleSize = 1;
 
         private const double DepthScale = 0.1f;
 
@@ -193,13 +195,11 @@ namespace KinectVR
             List<int> tempTriangle = new List<int>();
 
             for (int i = 0; i < _defaultTriangles.Length; i+=3) {
+
                 // Check the distance between the vertices in the triangles
                 int triangleV1 = _defaultTriangles[i];
                 int triangleV2 = _defaultTriangles[i + 1];
                 int triangleV3 = _defaultTriangles[i + 2];
-
-                //float distA = Vector3.Distance (_vertices [triangleV1], _vertices [triangleV2]);
-                //float distB = Vector3.Distance (_vertices [triangleV1], _vertices [triangleV3]);
 
                 float distA = Mathf.Abs(_vertices[triangleV1].z - _vertices[triangleV2].z);
                 float distB = Mathf.Abs(_vertices[triangleV1].z - _vertices[triangleV3].z);
