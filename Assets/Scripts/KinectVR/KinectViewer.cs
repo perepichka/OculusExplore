@@ -51,7 +51,7 @@ namespace KinectVR
         private int TriangleThreshold = 10;
     
         // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
-        private const int DownSampleSize = 1;
+        private const int DownSampleSize = 2;
 
         private const double DepthScale = 0.1f;
 

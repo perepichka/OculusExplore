@@ -29,69 +29,38 @@ namespace KinectVR
         // Object that will have the mesh objects as children
         private GameObject _meshHolder;
 
+        // Width and height of Mesh
+        private int _width;
+        private int _height;
+
         // Meshes that will be rendered
         private Mesh[] _meshes;
-        private int _vertexCount;
+        private int[][] _defaultTriangles;
 
-        // Original triangles
-        private int[] defaultTriangles;
-
-        //KinectMesh(int height, int width)
-        //{
-        //    // Creates the necessary meshes array
-        //    _meshes = new Mesh[ Mathf.CeilToInt((height * width) / (float) MaxVertices) ];
-
-            
-        //    _vertices = new Vector3[width * height];
-        //    _uv = new Vector2[width * height];
-        //    _defaultTriangles = new int[6 * ((width - 1) * (height - 1))];
-
-        //    for (int y = 0; y < height; y++)
-        //    {
-        //        for (int x = 0; x < width; x++)
-        //        {
-        //            int index = (y * width) + x;
-
-        //            _vertices[index] = new Vector3(x, -y, 0);
-        //            _uv[index] = new Vector2(((float)x / (float)width), ((float)y / (float)height));
-
-        //            // Skip the last row/col
-        //            if (x != (width - 1) && y != (height - 1))
-        //            {
-        //                int topLeft = index;
-        //                int topRight = topLeft + 1;
-        //                int bottomLeft = topLeft + width;
-        //                int bottomRight = bottomLeft + 1;
-
-        //                _defaultTriangles[triangleIndex++] = topLeft;
-        //                _defaultTriangles[triangleIndex++] = topRight;
-        //                _defaultTriangles[triangleIndex++] = bottomLeft;
-        //                _defaultTriangles[triangleIndex++] = bottomLeft;
-        //                _defaultTriangles[triangleIndex++] = topRight;
-        //                _defaultTriangles[triangleIndex++] = bottomRight;
-        //            }
-        //        }
-        //    }
-
-
-        //}
-
-        KinectMesh(Vector3[] vertices, Vector2[] uv, int[] triangles, GameObject meshHolder)
+        KinectMesh(int height, int width, GameObject meshHolder)
         {
-            // Sets up the meshholder
-            _meshHolder = meshHolder;
+            // Sets up width and height
+            _width = width;
+            _height = height;
 
-            // Number of meshes needed
-            int numberOfMeshes = Mathf.CeilToInt(vertices.Length / (float) MaxVertices);
-            
-            // Initializes the mesh array
-            _meshes = new Mesh[numberOfMeshes];
+            // We floor as we don't want half rows as they are a pain to deal with
+            // Substract 1 as we need overlap on all but two rows
+            int fakeRowsPerMesh = Mathf.FloorToInt( MaxVertices / (float) width ) - 1;
 
-            //int vertexCounter = vertices.Length;
+            // Caculates the number of meshes, rounding down to eliminate error caused
+            // by the two rows that don't overlap
+            int meshCount = Mathf.FloorToInt( (float) height / (float) fakeRowsPerMesh );
 
-            // Initializes the meshes
+            // Creates the necessary meshes array
+            _meshes = new Mesh[ meshCount ];
+
+            // Creates an array to store the default triangles for each mesh
+            _defaultTriangles = new int[ meshCount ][];
+
+
             for (int i = 0; i < _meshes.Length; i++)
             {
+                // Initializes the meshes
                 _meshes[i] = new Mesh();
 
                 // Creates an object to store a mesh filter
@@ -101,77 +70,51 @@ namespace KinectVR
                 // Adds a mesh filter to the object
                 var filter = holder.AddComponent<MeshFilter>();
                 filter.mesh = _meshes[i];
-                
+
                 // Sets the object's parent holder
                 holder.transform.parent = meshHolder.transform;
-                
-                //// Initializes the vertices, uvs, triangles
-                //int verticesLengths;
-                //if (vertexCounter >= MaxVertices)
-                //{
-                //    verticesLengths = MaxVertices;
-                //    vertexCounter -= MaxVertices;
-                //}
-                //else
-                //{
-                //    verticesLengths = vertexCounter;
-                //    vertexCounter = 0;
-                //}
 
-                //_meshes[i].vertices = new Vector3[verticesLengths];
-                //_meshes[i].uv = new Vector2[verticesLengths];
+                // Initializes the vertices, uvs, triangles
+                int rowsPerMesh = Mathf.FloorToInt( MaxVertices / (float) width );
 
-                //_meshes[i].triangles = new Vector2[width * height];
-            }
+                _meshes[i].vertices = new Vector3[rowsPerMesh * width];
+                _meshes[i].uv = new Vector2[rowsPerMesh * width];
+                _meshes[i].triangles = new int[6 * (rowsPerMesh - 1) * (width - 1)];
 
-            // Sets up vertex count
-            _vertexCount = vertices.Length;
-
-            // Initializes everything
-            foreach (Mesh m in _meshes)
-            {
-                int size = (i != (vertices.Length - 1) || (vertices.Length % MaxVertices == 0) )
-                    ? MaxVertices : (vertices.Length % MaxVertices) + 1 ;
-
-                // Since both of these are the same length, we can set them up at the same time
-                _meshes[GetMeshIndex(i)].vertices = new Vector3[size];
-                _meshes[GetMeshIndex(i)].uv = new Vector2[size];
-
-                // We need more voodo math for the triangles
-                int triangleSize = 
-                
-            }
-
-            // Sets up vertices, UVs
-            for (int i = 0; i < vertices.Length; i++)
-            {
-                if (_meshes[GetMeshIndex(i)].vertices == null)
+                int triangleIndex = 0;
+                for (int y = 0; y < height; y++)
                 {
-                    // Bunch of voodoo math to determine the size of the array 
-                    // (it is either MaxVertices size or the size of the remainder, with a special 
-                    // case for 0 remainder which is the same as being MaxVertices)
+                    for (int x = 0; x < width; x++)
+                    {
+                        int index = (y * width) + x;
 
-                } 
-            }
+                        _meshes[i].vertices[index] = new Vector3(x, -y, 0);
+                        _meshes[i].uv[index] = new Vector2(((float) x / (float) width), ((float) y / (float) rowsPerMesh));
 
-            // Sets up triangles
-            int triangleCount = triangles.Length;
-            for (int i = 0; i < triangles.Length; i++)
-            {
-                _meshes[].triangles
-            }
+                        // Skip the last row/col
+                        if (x != (width - 1) && y != (rowsPerMesh - 1))
+                        {
+                            int topLeft = index;
+                            int topRight = topLeft + 1;
+                            int bottomLeft = topLeft + width;
+                            int bottomRight = bottomLeft + 1;
 
-            // Sets up Triangles
-            for (int i = 0; i < Mathf.CeilToInt(triangles.Length / MaxVertices * 3); i += MaxVertices * 3)
-            {
-                _meshes[i].t
+                            _meshes[i].triangles[triangleIndex++] = topLeft;
+                            _meshes[i].triangles[triangleIndex++] = topRight;
+                            _meshes[i].triangles[triangleIndex++] = bottomLeft;
+                            _meshes[i].triangles[triangleIndex++] = bottomLeft;
+                            _meshes[i].triangles[triangleIndex++] = topRight;
+                            _meshes[i].triangles[triangleIndex++] = bottomRight;
+                        }
+                    }
+                }
+
+                // Before we finish, store a copy of the default triangles
+                _defaultTriangles[i] = (int[]) _meshes[i].triangles.Clone();
+
             }
 
         }
-
-        // 
-        // Getters
-        //
 
         // Gets the index of the Mesh from a vertex index
         int GetMeshIndex(int vertexIndex)
