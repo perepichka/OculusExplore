@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Windows.Kinect;
+using UnityEditorInternal;
 using UnityEngine;
 
 namespace KinectVR
@@ -35,9 +37,25 @@ namespace KinectVR
 
         // Meshes that will be rendered
         private Mesh[] _meshes;
-        private int[][] _defaultTriangles;
 
-        KinectMesh(int height, int width, GameObject meshHolder)
+        // We store the individual components of the mesh
+        // so that we don't have to access it via the mesh each time
+        private Vector3[][] _vertices;
+        private Vector2[][] _uv;
+        private int[][] _triangles;
+
+        // Kinect related stuff
+        private KinectSource _multiManager;
+
+        // Max distance between two vertices in a triangle after which it stops being rendered in the mesh
+        private const int TriangleThreshold = 10;
+    
+        // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
+        private const int DownSampleSize = 2;
+
+        private const double DepthScale = 0.1f;
+
+        public KinectMesh(int height, int width, GameObject meshHolder)
         {
             // Sets up width and height
             _width = width;
@@ -51,12 +69,19 @@ namespace KinectVR
             // by the two rows that don't overlap
             int meshCount = Mathf.FloorToInt( (float) height / (float) fakeRowsPerMesh );
 
+            // We need at least one mesh
+            if (meshCount == 0)
+                meshCount = 1;
+
             // Creates the necessary meshes array
             _meshes = new Mesh[ meshCount ];
 
             // Creates an array to store the default triangles for each mesh
-            _defaultTriangles = new int[ meshCount ][];
+            _vertices = new Vector3[ meshCount ][];
+            _uv = new Vector2[ meshCount ][];
+            _triangles = new int[ meshCount ][];
 
+            int baseRowsPerMesh = Mathf.FloorToInt(MaxVertices / (float) width);
 
             for (int i = 0; i < _meshes.Length; i++)
             {
@@ -71,25 +96,44 @@ namespace KinectVR
                 var filter = holder.AddComponent<MeshFilter>();
                 filter.mesh = _meshes[i];
 
+                // Adds a mesh renderer
+                var renderer = holder.AddComponent<MeshRenderer>();
+
+                // Hack to get default material
+                renderer.material = new Material(Shader.Find("Diffuse"));
+
                 // Sets the object's parent holder
                 holder.transform.parent = meshHolder.transform;
 
-                // Initializes the vertices, uvs, triangles
-                int rowsPerMesh = Mathf.FloorToInt( MaxVertices / (float) width );
+                // Gets the rows per mesh
+                int rowsPerMesh = baseRowsPerMesh;
 
-                _meshes[i].vertices = new Vector3[rowsPerMesh * width];
-                _meshes[i].uv = new Vector2[rowsPerMesh * width];
-                _meshes[i].triangles = new int[6 * (rowsPerMesh - 1) * (width - 1)];
+                // Resizes it if this is the last row
+                if (i == _meshes.Length - 1)
+                {
+                    int remainder = height % rowsPerMesh;
+
+                    // If the remainder is 0, we don't change rowsPerMesh
+                    if (remainder != 0)
+                    {
+                        rowsPerMesh = remainder;
+                    }
+                }
+
+                // Initializes the vertices, uvs, triangles
+                _vertices[i] = new Vector3[rowsPerMesh * width];
+                _uv[i] = new Vector2[rowsPerMesh * width];
+                _triangles[i] = new int[6 * (rowsPerMesh - 1) * (width - 1)];
 
                 int triangleIndex = 0;
-                for (int y = 0; y < height; y++)
+                for (int y = 0; y < rowsPerMesh; y++)
                 {
                     for (int x = 0; x < width; x++)
                     {
                         int index = (y * width) + x;
 
-                        _meshes[i].vertices[index] = new Vector3(x, -y, 0);
-                        _meshes[i].uv[index] = new Vector2(((float) x / (float) width), ((float) y / (float) rowsPerMesh));
+                        _vertices[i][index] = new Vector3(x, -y - (i*(baseRowsPerMesh-1)) , 0);
+                        _uv[i][index] = new Vector2(((float) x / (float) width), ((float) y / (float) rowsPerMesh));
 
                         // Skip the last row/col
                         if (x != (width - 1) && y != (rowsPerMesh - 1))
@@ -99,148 +143,105 @@ namespace KinectVR
                             int bottomLeft = topLeft + width;
                             int bottomRight = bottomLeft + 1;
 
-                            _meshes[i].triangles[triangleIndex++] = topLeft;
-                            _meshes[i].triangles[triangleIndex++] = topRight;
-                            _meshes[i].triangles[triangleIndex++] = bottomLeft;
-                            _meshes[i].triangles[triangleIndex++] = bottomLeft;
-                            _meshes[i].triangles[triangleIndex++] = topRight;
-                            _meshes[i].triangles[triangleIndex++] = bottomRight;
+                            _triangles[i][triangleIndex++] = topLeft;
+                            _triangles[i][triangleIndex++] = topRight;
+                            _triangles[i][triangleIndex++] = bottomLeft;
+                            _triangles[i][triangleIndex++] = bottomLeft;
+                            _triangles[i][triangleIndex++] = topRight;
+                            _triangles[i][triangleIndex++] = bottomRight;
                         }
                     }
                 }
 
-                // Before we finish, store a copy of the default triangles
-                _defaultTriangles[i] = (int[]) _meshes[i].triangles.Clone();
-
+                SetMeshData(i);
             }
 
         }
 
         // Gets the index of the Mesh from a vertex index
-        int GetMeshIndex(int vertexIndex)
+        public int GetMeshIndex(int vertexIndex)
         {
             return Mathf.FloorToInt(vertexIndex / (float) MaxVertices);
         }
 
-        Vector3[] GetVertices()
+        // Loads depth data from a kinect source
+        public void LoadDepthData(ushort[] depthData, 
+            Windows.Kinect.FrameDescription frameDesc,
+            ColorSpacePoint[] colorSpace, int colorWidth, int colorHeight)
         {
-            // Gets the total vertex length
-            Vector3[] vertices = new Vector3[_vertexCount];
-            
-            int index = 0;
-            foreach (Mesh m in _meshes)
+            for (int m = 0; m < _meshes.Length; m++)
             {
-                m.vertices.CopyTo(vertices, index);
-                index += MaxVertices;
-            }
 
-            return vertices;
-
-        }
-
-        Vector2[] GetUV()
-        {
-            // Gets the total vertex length
-            Vector2[] uvs = new Vector2[_vertexCount];
-            
-            int index = 0;
-            foreach (Mesh m in _meshes)
-            {
-                m.uv.CopyTo(uvs, index);
-                index += MaxVertices;
-            }
-
-            return uvs;
-            
-        }
-
-        List<int> GetTriangles()
-        {
-            // Triangle counts vary so we must recalculate each time
-            // Additionally, all vertices in a triangle must belong
-            // to the same mesh.
-
-            List<int> triangles = new List<int>();
-
-            foreach (Mesh m in _meshes)
-            {
-                foreach (int t in m.triangles)
+                // Populates positions of the vertices
+                for (int y = 0; y < _height; y++)
                 {
-                    triangles.Add(t);
+                    for (int x = 0; x < _width; x++)
+                    {
+                        int index = (y * (_width)) + x;
+
+                        double sum = 0.0;
+
+                        if (depthData[index] == 0)
+                            sum += 4500;
+                        else
+                            sum += depthData[index];
+
+                        sum = sum * DepthScale;
+
+                        _vertices[m][index].z = (float) (-4500.0 * DepthScale) + (float) sum;
+
+                        // Update UV mapping with CDRP
+                        var colorSpacePoint = colorSpace[(y * _width) + x];
+                        _uv[m][index] = new Vector2(
+                            colorSpacePoint.X / (float) colorWidth,
+                            colorSpacePoint.Y / (float) colorHeight);
+                    }
                 }
             }
-
-            // We return a List object directly since in any case, we will need
-            // to work with one later, and there is no sense in converting back
-            // and forwards
-            return triangles;
-
         }
 
-        //
-        // Setters
-        //
-
-        // Sets up Vertices for all meshes
-        void SetVertices(Vector3[] vertices)
+        // Loops thru triangles, pruning the ones that 
+        // have depths over the defined threshold
+        private void PruneTriangles()
         {
-            for (int i = 0; i<vertices.Length; i++)
+            for (int m = 0; m < _meshes.Length; m++)
             {
-                _meshes[Mathf.FloorToInt( (i + 1) / (float) MaxVertices)].vertices[i] = vertices[i];
-            }
-        }
+                // Loops through Triangles, removing any stretchy ones
+                List<int> tempTriangle = new List<int>();
 
-        // Sets up UV for all meshes
-        void SetUV(Vector2[] uv)
-        {
-            for (int i = 0; i<uv.Length; i++)
-            {
-                _meshes[Mathf.FloorToInt( (i + 1) / (float) MaxVertices)].uv[i] = uv[i];
-            }
-        }
+                for (int i = 0; i < _triangles[i].Length; i+=3) {
 
-        // Sets up Triangles for all meshes
-        void SetTriangles(List<int> triangles)
-        {
-            List<int> tempTriangles = new List<int>();
+                    // Check the distance between the vertices in the triangles
+                    int triangleV1 = _triangles[m][i];
+                    int triangleV2 = _triangles[m][i + 1];
+                    int triangleV3 = _triangles[m][i + 2];
 
-            int prevMesh = 0;
+                    float distA = Mathf.Abs(_vertices[m][triangleV1].z - _vertices[m][triangleV2].z);
+                    float distB = Mathf.Abs(_vertices[m][triangleV1].z - _vertices[m][triangleV3].z);
 
-            for (int i = 0; i < triangles.Count; i++)
-            {
-                // Since triangles vary, we need to do some checks on the vertices
-                // to find out what mesh they belong to
-                int meshIndex = Mathf.FloorToInt((triangles[i] + 1) / (float) MaxVertices);
-
-                if (meshIndex != prevMesh)
-                {
-                    _meshes[prevMesh].triangles = tempTriangles.ToArray();
-                    prevMesh++;
-                    tempTriangles = new List<int>();
+                    // If under the threshold, push the vertices. Otherwise, don't
+                    if (distA < TriangleThreshold && distB < TriangleThreshold)
+                    {
+                        tempTriangle.Add(triangleV1);
+                        tempTriangle.Add(triangleV2);
+                        tempTriangle.Add(triangleV3);
+                    }
                 }
 
-                tempTriangles.Add(triangles[i]);
-            }
+                _triangles[m] = tempTriangle.ToArray();
 
-            // Final case for the last vertices
-            if (prevMesh != _meshes.Length - 1)
-            {
-                _meshes[prevMesh].triangles = tempTriangles.ToArray();
+                SetMeshData(m);
+
             }
         }
-
-        // Calls recalculate normals on all meshes
-        void RecalculateNormals()
+    
+        // Sets the mesh data for all meshes
+        private void SetMeshData(int meshIndex)
         {
-            foreach (Mesh m in _meshes)
-            {
-                m.RecalculateNormals();
-            }
-        }
-
-        void PruneTriangles()
-        {
-            
+            _meshes[meshIndex].vertices = _vertices[meshIndex];
+            _meshes[meshIndex].uv = _uv[meshIndex];
+            _meshes[meshIndex].triangles = _triangles[meshIndex];
+            _meshes[meshIndex].RecalculateNormals();
         }
 
     }

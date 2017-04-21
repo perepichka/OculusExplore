@@ -36,7 +36,7 @@ namespace KinectVR
 
         // Since Unity has hard limit of 65k vertices per mesh, we will need multiple meshes
         // in order to fit the Mesh within unity without downsampling
-        private Mesh[] _Meshes;
+        private KinectMesh _kinectMesh;
 
         private Vector3[] _vertices;
         private Vector2[] _uv;
@@ -58,11 +58,14 @@ namespace KinectVR
 
         void Start()
         {
+
             _sensor = KinectSensor.GetDefault();
             if (_sensor != null)
             {
                 _mapper = _sensor.CoordinateMapper;
                 var frameDesc = _sensor.DepthFrameSource.FrameDescription;
+
+                _kinectMesh = new KinectMesh(frameDesc.Width, frameDesc.Height, GameObject.Find("Meshes") );
 
                 // Downsample to lower resolution
                 CreateMesh(frameDesc.Width / DownSampleSize, frameDesc.Height / DownSampleSize);
@@ -139,6 +142,14 @@ namespace KinectVR
             }
         
             gameObject.GetComponent<Renderer>().material.mainTexture = _multiManager.GetColorTexture();
+
+            var depthData = _multiManager.GetDepthData();
+            var frameDesc = _sensor.DepthFrameSource.FrameDescription;
+
+            ColorSpacePoint[] colorSpace = new ColorSpacePoint[depthData.Length];
+            _mapper.MapDepthFrameToColorSpace(depthData, colorSpace);
+
+            //_kinectMesh.LoadDepthData(depthData, frameDesc, colorSpace, _multiManager.ColorWidth, _multiManager.ColorHeight);
 
             RefreshData(_multiManager.GetDepthData(),
                 _multiManager.ColorWidth,
