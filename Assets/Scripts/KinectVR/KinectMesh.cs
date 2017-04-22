@@ -1,20 +1,30 @@
-﻿using System;
+﻿//  =====================================================================
+//  OculusExplore
+//  Copyright(C)                                      
+//  2017 Maksym Perepichka
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+//  GNU General Public License for more details.
+//            
+//  You should have received a copy of the GNU General Public License 
+//  along with this program.If not, see<http://www.gnu.org/licenses/>.
+//  =====================================================================
+
 using System.Collections.Generic;
-using System.Linq;
 using Windows.Kinect;
-using UnityEditorInternal;
 using UnityEngine;
 
 namespace KinectVR
 {
     public class KinectMesh
     {
-
-        //
-        // Public properties
-        //
-
-
         //
         // Constants
         //
@@ -29,7 +39,7 @@ namespace KinectVR
         //
 
         // Object that will have the mesh objects as children
-        private GameObject _meshHolder;
+        private GameObject[] _meshHolders;
 
         // Width and height of Mesh
         private int _width;
@@ -42,20 +52,18 @@ namespace KinectVR
         // so that we don't have to access it via the mesh each time
         private Vector3[][] _vertices;
         private Vector2[][] _uv;
+        private int[][] _defaultTriangles;
         private int[][] _triangles;
 
         // Kinect related stuff
         private KinectSource _multiManager;
 
         // Max distance between two vertices in a triangle after which it stops being rendered in the mesh
-        private const int TriangleThreshold = 10;
+        private const int TriangleThreshold = 20;
     
-        // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
-        private const int DownSampleSize = 2;
+        private const double DepthScale = 0.2f;
 
-        private const double DepthScale = 0.1f;
-
-        public KinectMesh(int height, int width, GameObject meshHolder)
+        public KinectMesh(int width, int height, GameObject meshHolder)
         {
             // Sets up width and height
             _width = width;
@@ -67,14 +75,13 @@ namespace KinectVR
 
             // Caculates the number of meshes, rounding down to eliminate error caused
             // by the two rows that don't overlap
-            int meshCount = Mathf.FloorToInt( (float) height / (float) fakeRowsPerMesh );
-
-            // We need at least one mesh
-            if (meshCount == 0)
-                meshCount = 1;
+            int meshCount = Mathf.FloorToInt( (float) height / (float) fakeRowsPerMesh ) + 1;
 
             // Creates the necessary meshes array
             _meshes = new Mesh[ meshCount ];
+
+            // Creates the necessary mesh holder array
+            _meshHolders = new GameObject[ meshCount ];
 
             // Creates an array to store the default triangles for each mesh
             _vertices = new Vector3[ meshCount ][];
@@ -105,6 +112,12 @@ namespace KinectVR
                 // Sets the object's parent holder
                 holder.transform.parent = meshHolder.transform;
 
+                // Resets holder's own position as it gets messed up
+                holder.transform.localPosition = new Vector3(0, 0, 0);
+
+                // Adds the holder to the array
+                _meshHolders[i] = (GameObject) holder;
+
                 // Gets the rows per mesh
                 int rowsPerMesh = baseRowsPerMesh;
 
@@ -133,7 +146,10 @@ namespace KinectVR
                         int index = (y * width) + x;
 
                         _vertices[i][index] = new Vector3(x, -y - (i*(baseRowsPerMesh-1)) , 0);
-                        _uv[i][index] = new Vector2(((float) x / (float) width), ((float) y / (float) rowsPerMesh));
+                        _uv[i][index] = new Vector2(
+                            ((float) x / (float) width),
+                            ((float) (y + i * (baseRowsPerMesh - 1) )/ (float) height)
+                        );
 
                         // Skip the last row/col
                         if (x != (width - 1) && y != (rowsPerMesh - 1))
@@ -153,6 +169,8 @@ namespace KinectVR
                     }
                 }
 
+                _defaultTriangles = (int[][]) _triangles.Clone();
+
                 SetMeshData(i);
             }
 
@@ -164,40 +182,36 @@ namespace KinectVR
             return Mathf.FloorToInt(vertexIndex / (float) MaxVertices);
         }
 
-        // Loads depth data from a kinect source
-        public void LoadDepthData(ushort[] depthData, 
-            Windows.Kinect.FrameDescription frameDesc,
-            ColorSpacePoint[] colorSpace, int colorWidth, int colorHeight)
-        {
-            for (int m = 0; m < _meshes.Length; m++)
+        // Loads depth data onto the models
+        public void LoadDepthData(ushort[] depthData, Texture colorTexture, ColorSpacePoint[] colorSpacePoints,  int colorWidth, int colorHeight)
+        { 
+            int baseRowsPerMesh = Mathf.FloorToInt(MaxVertices / (float) _width);
+
+            for (int i = 0; i < _vertices.Length; i++)
             {
+                _meshHolders[i].GetComponent<Renderer>().material.mainTexture = colorTexture;
 
-                // Populates positions of the vertices
-                for (int y = 0; y < _height; y++)
+                int offset = (i * (baseRowsPerMesh - 1) * _width); 
+
+                for (int j = 0; j < _vertices[i].Length; j++)
                 {
-                    for (int x = 0; x < _width; x++)
-                    {
-                        int index = (y * (_width)) + x;
+                    int depthIndex = offset + j;
 
-                        double sum = 0.0;
+                    double sum = depthData[depthIndex] ;//== 0 ? 4500 : depthData[depthIndex];
 
-                        if (depthData[index] == 0)
-                            sum += 4500;
-                        else
-                            sum += depthData[index];
+                    _vertices[i][j].z = (float) (-4500.0 * DepthScale) + (float) (sum * DepthScale);
 
-                        sum = sum * DepthScale;
+                    var colorSpacePoint = colorSpacePoints[depthIndex];
 
-                        _vertices[m][index].z = (float) (-4500.0 * DepthScale) + (float) sum;
+                    _uv[i][j] = new Vector2(
+                        (colorSpacePoint.X  / (float) colorWidth),
+                        (colorSpacePoint.Y / (float) colorHeight)
+                    );
 
-                        // Update UV mapping with CDRP
-                        var colorSpacePoint = colorSpace[(y * _width) + x];
-                        _uv[m][index] = new Vector2(
-                            colorSpacePoint.X / (float) colorWidth,
-                            colorSpacePoint.Y / (float) colorHeight);
-                    }
                 }
+                SetMeshData(i);
             }
+            PruneTriangles();
         }
 
         // Loops thru triangles, pruning the ones that 
@@ -209,12 +223,12 @@ namespace KinectVR
                 // Loops through Triangles, removing any stretchy ones
                 List<int> tempTriangle = new List<int>();
 
-                for (int i = 0; i < _triangles[i].Length; i+=3) {
+                for (int i = 0; i < _defaultTriangles[m].Length; i+=3) {
 
                     // Check the distance between the vertices in the triangles
-                    int triangleV1 = _triangles[m][i];
-                    int triangleV2 = _triangles[m][i + 1];
-                    int triangleV3 = _triangles[m][i + 2];
+                    int triangleV1 = _defaultTriangles[m][i];
+                    int triangleV2 = _defaultTriangles[m][i + 1];
+                    int triangleV3 = _defaultTriangles[m][i + 2];
 
                     float distA = Mathf.Abs(_vertices[m][triangleV1].z - _vertices[m][triangleV2].z);
                     float distB = Mathf.Abs(_vertices[m][triangleV1].z - _vertices[m][triangleV3].z);
