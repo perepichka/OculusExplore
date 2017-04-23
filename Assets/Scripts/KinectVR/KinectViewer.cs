@@ -57,6 +57,7 @@ namespace KinectVR
         void Start()
         {
 
+            // Sets up sensor stuff
             _sensor = KinectSensor.GetDefault();
             if (_sensor != null)
             {
@@ -70,6 +71,9 @@ namespace KinectVR
                     _sensor.Open();
                 }
             }
+
+            // Sets up Oculus Stuff
+            GameObject.Find("TrackingSpace").transform.localScale = new Vector3(100, 100, 100);
         }
 
         void Update()

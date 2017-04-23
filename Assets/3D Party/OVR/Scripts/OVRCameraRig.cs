@@ -134,7 +134,7 @@ public class OVRCameraRig : MonoBehaviour
 		OVRPose tracker = OVRManager.tracker.GetPose();
 
         // Sets up some scale stuff
-	    trackingSpace.localScale = new Vector3(100, 100, 100);
+	    //trackingSpace.localScale = new Vector3(100, 100, 100);
 
 		trackerAnchor.localRotation = tracker.orientation;
 		centerEyeAnchor.localRotation = VR.InputTracking.GetLocalRotation(VR.VRNode.CenterEye);
