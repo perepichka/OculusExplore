@@ -20,6 +20,8 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Threading;
+using Boo.Lang;
 using UnityEngine;
 
 namespace Streetview
@@ -50,6 +52,11 @@ namespace Streetview
         //
         // Members
         //
+        public int XMax;
+        public int YMax;
+
+        public int Size = 512;
+
         public string BaseUrl;
         public string FileName; 
 
@@ -58,16 +65,23 @@ namespace Streetview
         public int ZoomLevel;
 
         // Memory stream with images
-        public MemoryStream Images;
+        public List<List<Texture2D>> Images;
+
+        // Sempahore for reading/writing images
+
+        public bool ImagesReady;
 
         // Use this for initialization
         void Start ()
         {
+            // Starts images stream
+            Images = new List<List<Texture2D>>();// MemoryStream();
+           
+            // Sets up images ready
+            ImagesReady = false;
 
-            string tempUrl = ParseUrl(BaseUrl);
-
-            DownloadImages( tempUrl , ZoomLevel);
-
+            // Downloads the images
+            Download();
         }
 	
         // Update is called once per frame
@@ -76,12 +90,25 @@ namespace Streetview
         }
 
         //
-        // Privates static methods
+        // Privates methods methods
         //
+
+        private void Download()
+        {
+            // Gets the URL
+            string tempUrl = ParseUrl(BaseUrl);
+
+            // Starts downloading the images
+            DownloadImages(tempUrl, ZoomLevel);
+
+            // Sets imagesReady
+            ImagesReady = true;
+
+        }
 
         // Parses URL and extracts the key that we will need to download individual images
         private static string ParseUrl(string url)
-        {
+        { 
             // Gets starting index
             var index1 = url.IndexOf(UrlTokenStart) + UrlTokenStart.Length;
             var index2 = url.IndexOf(UrlTokenEnd);
@@ -90,71 +117,84 @@ namespace Streetview
         }
 
         // Sets up image for download
-        private static bool DownloadImages(string url, int zoomLevel)
+        private bool DownloadImages(string url, int zoomLevel)
         {
-            int xMax=0;
-            int yMax=0;
+            XMax = 0;
+            YMax = 0;
 
             // Sets up our values
             switch (zoomLevel)
             {
                 case 3:
-                    xMax = 6;
-                    yMax = 3;
+                    XMax = 7;
+                    YMax = 3;
                     break;
                 case 4:
-                    xMax = 12;
-                    yMax = 6;
+                    XMax = 13;
+                    YMax = 6;
                     break;
                 default:
                     return false;
             }
-            
+
             // Loops through creating the urls we will need
-            for (int x = 0; x < xMax; x++)
+            for (int y = 0; y < YMax; y++)
             {
-                for (int y = 0; y < yMax; y++)
+                List<Texture2D> imageRow = new List<Texture2D>();
+
+                for (int x = 0; x < XMax; x++)
                 {
+                
                     string tempDownloadValues = UrlDownloadValues.Replace("X", x.ToString()).Replace("Y", y.ToString()).Replace("Z", zoomLevel.ToString());
                     string tempUrl = UrlDownloadBase + url + UrlDownloadOutput + tempDownloadValues;
                     string tempFileName = FilePathBase + "tile-x" + x + "-y" + y + ".jpg";
 
-                    DownloadRemoteImageFile(tempUrl, tempFileName);
+                    imageRow.Add(DownloadRemoteImageFile(tempUrl, tempFileName));
+                    
                 }
-            }
 
+                Images.Add(imageRow);
+
+            }
+            
             return true;
         }
 
-        // Downloads image from remote server
-        private static void DownloadRemoteImageFile(string uri, string fileName)
+        // Downloads image from remote server to the memory stream
+        private Texture2D DownloadRemoteImageFile(string uri, string fileName)
         {
+            MemoryStream imageStream = new MemoryStream();
+
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
-            // Check that the remote file was found. The ContentType
-            // check is performed since a request for a non-existent
-            // image file might be redirected to a 404-page, which would
-            // yield the StatusCode "OK", even though the image was not
-            // found.
-            if ((response.StatusCode == HttpStatusCode.OK || 
-                 response.StatusCode == HttpStatusCode.Moved || 
+            if ((response.StatusCode == HttpStatusCode.OK ||
+                 response.StatusCode == HttpStatusCode.Moved ||
                  response.StatusCode == HttpStatusCode.Redirect) &&
-                response.ContentType.StartsWith("image",StringComparison.OrdinalIgnoreCase))
+                response.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase))
             {
 
-                using (Stream inputStream = response.GetResponseStream())
-                using (Stream outputStream = System.IO.File.OpenWrite(fileName))
+                using (Stream inputStream = response.GetResponseStream()))
                 {
                     byte[] buffer = new byte[4096];
                     int bytesRead;
                     do
                     {
                         bytesRead = inputStream.Read(buffer, 0, buffer.Length);
-                        outputStream.Write(buffer, 0, bytesRead);
+
+                        imageStream.Write(buffer, 0, bytesRead);
+
                     } while (bytesRead != 0);
                 }
             }
+            else
+            {
+                Debug.Log("Failed to load online image");
+            }
+
+            Texture2D tex = new Texture2D(Size, Size);
+            tex.LoadImage(imageStream.GetBuffer());
+            return tex;
         }
     }
 }
