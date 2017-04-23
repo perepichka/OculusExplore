@@ -19,6 +19,7 @@
 
 using Boo.Lang;
 using System;
+using System.Collections;
 using System.IO;
 using SharpConfig;
 using UnityEditor;
@@ -32,14 +33,14 @@ namespace Streetview
         // Stich struct to contain the sitched together texture
         public struct Stich
         {       
-            
             // Texture containing the sphere
-            public RenderTexture SphereTexture;
+            public Texture2D SphereTexture;
 
             // Texture width, height
-            public int Width;
+            public int Width, Height;
 
-            public int Height;
+            // X, Y Positions
+            public double Longitude, Latitude;
         }
 
         // Stiches containing textures
@@ -47,10 +48,16 @@ namespace Streetview
 
         // Downloader object
         private Downloader _downloader;
+
+        // Load a texture
+        public bool texEmpty;
        
         // Use this for initialization
         void Start ()
         {
+            // Sets up stiches
+            Stiches = new List<Stich>();
+
             // Gets a reference to the downloader
             _downloader = transform.GetComponent<Downloader>();
 
@@ -60,6 +67,8 @@ namespace Streetview
                 throw new Exception("No Downloader script found");
             }
 
+            // Sets tex empty
+            texEmpty = true;
         }
 
         // Update is called once per frame
@@ -68,15 +77,31 @@ namespace Streetview
 
             if (_downloader.ImagesReady)
             {
-                AddStich(_downloader.Images, _downloader.Size, _downloader.XMax, _downloader.YMax);
-                _downloader.ImagesReady = false;
+                StartCoroutine(AddStich(
+                    _downloader.Images,
+                    _downloader.Size,
+                    _downloader.XMax,
+                    _downloader.YMax)
+                );
+                
+            }
+
+            if (Stiches.Count != 0 && texEmpty)
+            {
+                texEmpty = false;
+                GameObject.Find("Sphere").GetComponent<MeshRenderer>().material.mainTexture = Stiches[0].SphereTexture;
+
+                Resources.
             }
 
         }
 
         // Adds a stich
-        void AddStich(List<List<Texture2D>> images, int imageSize, int xCount, int yCount)
+        IEnumerator AddStich(List<List<Texture2D>> images, int imageSize, int xCount, int yCount)
         {
+            // Creates a stich struct
+            Stich s = new Stich();
+
             // Loads texture from 
             Texture2D t = new Texture2D(imageSize * xCount, imageSize * yCount);
             t.wrapMode = TextureWrapMode.Clamp;
@@ -104,8 +129,16 @@ namespace Streetview
 
             t.Apply();
 
-            GameObject.Find("Sphere").GetComponent<MeshRenderer>().material.mainTexture = t;
+            // Sets the Stich texture
+            s.SphereTexture = t;
 
+            // Adds the stich to the stich array
+            Stiches.Add(s);
+
+            // Set the Downloader back to being ready
+            _downloader.ImagesReady = false;
+
+            yield return null;
         }
         
         // Sitches together textures

@@ -75,7 +75,7 @@ namespace Streetview
         void Start ()
         {
             // Starts images stream
-            Images = new List<List<Texture2D>>();// MemoryStream();
+            Images = new List<List<Texture2D>>();
            
             // Sets up images ready
             ImagesReady = false;
@@ -149,6 +149,7 @@ namespace Streetview
                     string tempUrl = UrlDownloadBase + url + UrlDownloadOutput + tempDownloadValues;
                     string tempFileName = FilePathBase + "tile-x" + x + "-y" + y + ".jpg";
 
+                    Debug.Log(tempUrl);
                     imageRow.Add(DownloadRemoteImageFile(tempUrl, tempFileName));
                     
                 }
@@ -174,7 +175,7 @@ namespace Streetview
                 response.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase))
             {
 
-                using (Stream inputStream = response.GetResponseStream()))
+                using (Stream inputStream = response.GetResponseStream())
                 {
                     byte[] buffer = new byte[4096];
                     int bytesRead;
