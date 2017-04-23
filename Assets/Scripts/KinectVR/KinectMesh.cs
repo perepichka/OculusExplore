@@ -197,7 +197,7 @@ namespace KinectVR
                 {
                     int depthIndex = offset + j;
 
-                    double sum = depthData[depthIndex] ;//== 0 ? 4500 : depthData[depthIndex];
+                    double sum = depthData[depthIndex] == 0 ? 4500 : depthData[depthIndex];
 
                     _vertices[i][j].z = (float) (-4500.0 * DepthScale) + (float) (sum * DepthScale);
 
@@ -209,7 +209,7 @@ namespace KinectVR
                     );
 
                 }
-                SetMeshData(i);
+                //SetMeshData(i);
             }
             PruneTriangles();
         }
