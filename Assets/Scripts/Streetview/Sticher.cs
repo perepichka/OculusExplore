@@ -91,7 +91,7 @@ namespace Streetview
                 texEmpty = false;
                 GameObject.Find("Sphere").GetComponent<MeshRenderer>().material.mainTexture = Stiches[0].SphereTexture;
 
-                Resources.
+                //Resources.
             }
 
         }
