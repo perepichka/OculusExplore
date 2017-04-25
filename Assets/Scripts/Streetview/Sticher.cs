@@ -17,9 +17,9 @@
 //  along with this program.If not, see<http://www.gnu.org/licenses/>.
 //  =====================================================================
 
-using Boo.Lang;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using SharpConfig;
 using UnityEditor;
@@ -39,12 +39,10 @@ namespace Streetview
             // Texture width, height
             public int Width, Height;
 
-            // X, Y Positions
-            public double Longitude, Latitude;
         }
 
         // Stiches containing textures
-        public List<Stich> Stiches; 
+        public Dictionary<string, Stich> Stiches; 
 
         // Downloader object
         private Downloader _downloader;
@@ -56,7 +54,7 @@ namespace Streetview
         void Start ()
         {
             // Sets up stiches
-            Stiches = new List<Stich>();
+            Stiches = new Dictionary<string, Stich>();
 
             // Gets a reference to the downloader
             _downloader = transform.GetComponent<Downloader>();
@@ -75,16 +73,7 @@ namespace Streetview
         void Update()
         {
 
-            if (_downloader.ImagesReady)
-            {
-                StartCoroutine(AddStich(
-                    _downloader.Images,
-                    _downloader.Size,
-                    _downloader.XMax,
-                    _downloader.YMax)
-                );
-                
-            }
+            
 
             if (Stiches.Count != 0 && texEmpty)
             {
@@ -96,8 +85,64 @@ namespace Streetview
 
         }
 
+        // 
+        // Methods for accessing stiche
+        //
+
+        // Loads a stich at a coordinate
+        public void LoadStich(int xCoordinate, int yCoordinate)
+        {
+            string combinedCoord = GetCombinedCoordinate(xCoordinate, yCoordinate);
+
+            // Secondly checks if it is in the dictionary
+            bool inDict = HasStich(combinedCoord);
+
+            // If we don't have the stich, we are sad :( since our prediction system failed
+            // However, there is still a job to be done, so we have to download it
+            if (!inDict)
+            {
+                _downloader.Download();
+            }
+
+            if (_downloader.ImagesReady)
+            {
+                StartCoroutine(AddStich(
+                    _downloader.Images,
+                    _downloader.Size,
+                    _downloader.XMax,
+                    _downloader.YMax)
+                );
+
+            }
+
+        }
+
+        // Check if we have the stich for the coordinate or if will need to be downloaded
+        public bool HasStich(string combinedCoordinate)
+        { 
+            // Checks the dict for the key
+            if (Stiches.ContainsKey(combinedCoordinate))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        //
+        // Helper method for working with coordinates
+        //
+
+        public string GetCombinedCoordinate(int xCoordinate, int yCoordinate)
+        {
+            return (xCoordinate.ToString() + "," + yCoordinate.ToString());
+        }
+
+        //
+        // Methods for creating stiches
+        //
+
         // Adds a stich
-        IEnumerator AddStich(List<List<Texture2D>> images, int imageSize, int xCount, int yCount)
+        private IEnumerator AddStich(Boo.Lang.List<Boo.Lang.List<Texture2D>> images, int imageSize, int xCount, int yCount)
         {
             // Creates a stich struct
             Stich s = new Stich();
@@ -142,13 +187,14 @@ namespace Streetview
         }
         
         // Sitches together textures
-        void StichTogether()
+        private void StichTogether()
         {
             //int sphereHeight = _height * 
             //int sphereWidth = 
             //_sphereTexture.height = 
         }
 	
+     
       
     }
 }

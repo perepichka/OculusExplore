@@ -81,20 +81,7 @@ namespace Streetview
             ImagesReady = false;
 
             // Downloads the images
-            Download();
-        }
-	
-        // Update is called once per frame
-        void Update () {
-		
-        }
 
-        //
-        // Privates methods methods
-        //
-
-        private void Download()
-        {
             // Gets the URL
             string tempUrl = ParseUrl(BaseUrl);
 
@@ -103,7 +90,29 @@ namespace Streetview
 
             // Sets imagesReady
             ImagesReady = true;
+        }
+	
+        // Update is called once per frame
+        void Update () {
+		
+        }
 
+        // Downloads the image
+        public void Download()
+        {
+           
+
+        }
+
+        //
+        // Privates methods methods
+        //
+
+        // Gets a panorama ID from a url (requires API key to be set)
+        void GetPanoramaID(string url)
+        {
+
+            
         }
 
         // Parses URL and extracts the key that we will need to download individual images

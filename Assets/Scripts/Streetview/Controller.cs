@@ -17,19 +17,60 @@
 //  along with this program.If not, see<http://www.gnu.org/licenses/>.
 //  =====================================================================
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Controller : MonoBehaviour {
+namespace Streetview
+{
+    public class Controller : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
-		
-	}
+        //
+        // Constants
+        //
+
+        // Coordinate
+        private const double LatitutdeDisplacement = 0.001f;
+        private const double LongitudeDisplacement = 0.001f;
+
+        //
+        // Members
+        //
+
+        public bool CanMove;
+
+
+        private Sticher _sticherScript;
+
+
+        // Use this for initialization
+        void Start ()
+        {
+            _sticherScript = transform.GetComponent<Sticher>();
+ 
+        }
 	
-	// Update is called once per frame
-	void Update () {
-		
-	}
+        // Update is called once per frame
+        void Update () {
+
+            if (Input.GetKeyDown("left") && CanMove)
+            {
+                
+
+            } else if (Input.GetKeyDown("right") && CanMove)
+            {
+
+
+            }
+            else if (Input.GetKeyDown("up") && CanMove)
+            {
+
+
+            }
+            else if (Input.GetKeyDown("down") && CanMove)
+            {
+
+
+            }
+
+        }
+    }
 }
