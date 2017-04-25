@@ -20,12 +20,37 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Threading;
 using Boo.Lang;
 using UnityEngine;
 
 namespace Streetview
 {
+
+    // Some stuff we need for JSON parsing
+    [System.Serializable]
+    public class Location
+    {
+        public string lat;
+        public string lng;
+    }
+
+    [System.Serializable]
+    public class GoogleResponser
+    {
+        public string copyright;
+        public string date;
+        public Location location;
+        public string pano_id;
+        public string status;
+        public string error_message;
+
+        public static GoogleResponser CreateFromJson(string json)
+        {
+            return JsonUtility.FromJson<GoogleResponser>(json);
+        }
+    }
+
+
     public class Downloader : MonoBehaviour
     {
 
@@ -37,7 +62,7 @@ namespace Streetview
         private const string UrlTokenStart = "!1s";
         private const string UrlTokenEnd = "!2e";
 
-        // Base URL from which to download the images
+        // Base URL Google geo1 server from which to download the images
         private const string UrlDownloadBase =
             @"http://geo1.ggpht.com/cbk?cb_client=maps_sv.tactile&authuser=0&hl=en&panoid=";
 
@@ -46,14 +71,19 @@ namespace Streetview
             
         private const string UrlDownloadValues = "&x=X&y=Y&zoom=Z";
 
-        // Base file path where to store the images
+        // Base API path to verify image validity and convert coordinates to panoids
+        private const string UrlVerification =
+            @"https://maps.googleapis.com/maps/api/streetview/metadata?location=";
+
+        private const string UrlApiKey = @"&key=";
+
+        // Base file path where to store the images (deprecated)
         private const string FilePathBase = @"Assets\Resources\Streetview\Tiles\";
+
 
         //
         // Members
         //
-        public int XMax;
-        public int YMax;
 
         public int Size = 512;
 
@@ -64,32 +94,27 @@ namespace Streetview
         // and subsequently how many tiles are needed in total
         public int ZoomLevel;
 
-        // Memory stream with images
-        public List<List<Texture2D>> Images;
+        // API stuff
+        public bool StreetViewApiEnabled;
 
-        // Sempahore for reading/writing images
-
-        public bool ImagesReady;
+        private string _apiKey;
 
         // Use this for initialization
         void Start ()
         {
-            // Starts images stream
-            Images = new List<List<Texture2D>>();
-           
-            // Sets up images ready
-            ImagesReady = false;
-
-            // Downloads the images
-
-            // Gets the URL
-            string tempUrl = ParseUrl(BaseUrl);
-
-            // Starts downloading the images
-            DownloadImages(tempUrl, ZoomLevel);
-
-            // Sets imagesReady
-            ImagesReady = true;
+            // Fetches API key
+            try
+            {
+                _apiKey = transform.GetComponent<ConfigParser>().ApiKey;
+                StreetViewApiEnabled = true;
+            } catch (Exception e)
+            {
+                // Logs the stack trace
+                Debug.Log("Cannot find API Key, reverting to mode without API access");
+                Debug.Log(e.StackTrace);
+                _apiKey = null;
+                StreetViewApiEnabled = false;
+            }
         }
 	
         // Update is called once per frame
@@ -98,9 +123,22 @@ namespace Streetview
         }
 
         // Downloads the image
-        public void Download()
+        public List<List<Texture2D>> Download(string pano)
         {
-           
+            // Checks that we have the pano
+            if (string.IsNullOrEmpty(pano))
+            {
+                return null;
+            }
+
+            // If we indeed have the pano, build URL from it and download it
+            List<List<Texture2D>> images = DownloadImages(pano, ZoomLevel);
+
+            // Checks that we have the images
+            if (images == null)
+            {
+                return null;
+            }
 
         }
 
@@ -108,15 +146,79 @@ namespace Streetview
         // Privates methods methods
         //
 
-        // Gets a panorama ID from a url (requires API key to be set)
-        void GetPanoramaID(string url)
+        private GoogleResponser GetJsonObject(string jsonStr)
         {
+            // Creates object to store JSON
+            GoogleResponser g = GoogleResponser.CreateFromJson(jsonStr);
 
+            // If the status isn't OK, the coordinates have no Streetview
+            if (g.status == "REQUEST_DENIED")
+            {
+                Debug.Log("Failed Google API Request: ");
+                Debug.Log(g.error_message);
+                throw new Exception(g.error_message);
+            } else if (g.status == "INVALID_REQUEST")
+            {
+                Debug.Log("Failed Google API Request: ");
+                Debug.Log(g.error_message);
+                throw new Exception(g.error_message);
+            } else if (g.status == "ZERO_RESULTS")
+            {
+                // This will happen pretty often so we don't
+                // want to throw an exception, just return nulll
+                return null;
+            } else if (g.status == "OK")
+            {
+                // This means we got the coordinates, can fully work with them
+                return g;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        // Gets a panorama ID from two coordinates
+        public string CoordinatesToPanorama(string coordinates)
+        {
+            // Checks if we have API access
+            if (!StreetViewApiEnabled)
+            {
+                return null;
+            }
+
+            // Appends coordinates to panorma id
+            string newUrl = UrlVerification + coordinates + UrlApiKey + _apiKey;
+
+            // Attempts to get the pano id from json found on the site
+            string jsonStr = DownloadStreetViewValidationData(newUrl);
+
+            // Gets the JSON responser object
+            GoogleResponser g = GetJsonObject(jsonStr);
             
+            // If we got null, return null string
+            if (g == null)
+            {
+                return null;
+            }
+
+            // Gets our json stuff
+            string panoid = g.pano_id;
+
+            // Final verification
+            if (string.IsNullOrEmpty(panoid))
+            {
+                return panoid;
+            }
+            else
+            {
+                return null;
+            }
+
         }
 
         // Parses URL and extracts the key that we will need to download individual images
-        private static string ParseUrl(string url)
+        private static string GetKeyFromURL(string url)
         { 
             // Gets starting index
             var index1 = url.IndexOf(UrlTokenStart) + UrlTokenStart.Length;
@@ -126,10 +228,10 @@ namespace Streetview
         }
 
         // Sets up image for download
-        private bool DownloadImages(string url, int zoomLevel)
+        private List<List<Texture2D>> DownloadImages(string url, int zoomLevel)
         {
-            XMax = 0;
-            YMax = 0;
+            int XMax = 0;
+            int YMax = 0;
 
             // Sets up our values
             switch (zoomLevel)
@@ -143,8 +245,10 @@ namespace Streetview
                     YMax = 6;
                     break;
                 default:
-                    return false;
+                    return null;
             }
+
+            List<List<Texture2D>> images = new List<List<Texture2D>>();
 
             // Loops through creating the urls we will need
             for (int y = 0; y < YMax; y++)
@@ -156,22 +260,36 @@ namespace Streetview
                 
                     string tempDownloadValues = UrlDownloadValues.Replace("X", x.ToString()).Replace("Y", y.ToString()).Replace("Z", zoomLevel.ToString());
                     string tempUrl = UrlDownloadBase + url + UrlDownloadOutput + tempDownloadValues;
-                    string tempFileName = FilePathBase + "tile-x" + x + "-y" + y + ".jpg";
 
                     Debug.Log(tempUrl);
-                    imageRow.Add(DownloadRemoteImageFile(tempUrl, tempFileName));
+                    imageRow.Add(DownloadRemoteImageFile(tempUrl));
                     
                 }
 
-                Images.Add(imageRow);
+                images.Add(imageRow);
 
             }
             
-            return true;
+            return images;
+        }
+
+        // Downloads json into string from web
+        private string DownloadStreetViewValidationData(string url)
+        {
+            string jsonData = null;
+
+            var webReader = new WWW(url);
+
+            if (webReader.text != null && webReader.error == null)
+            {
+                jsonData = webReader.text;
+            }
+
+            return jsonData;
         }
 
         // Downloads image from remote server to the memory stream
-        private Texture2D DownloadRemoteImageFile(string uri, string fileName)
+        private Texture2D DownloadRemoteImageFile(string uri)
         {
             MemoryStream imageStream = new MemoryStream();
 

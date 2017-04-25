@@ -30,6 +30,19 @@ namespace Streetview
     public class Sticher : MonoBehaviour
     {
 
+        // 
+        // Constants
+        //
+
+        // Min. Degree to which the coordinates will be incremented during movement
+        private const double CoordinateIncrement = 0.0001f;
+
+        // Max. Range of coordinates to look for during movement before giving up
+        // Ideally this would be infinite, simply just going to the next available image,
+        // But I somehow doubt it is a good idea to spam Google's servers with millions of requests
+        // Considering we pass our API key to do this... 
+        private const double CoordinateMaxRange = 0.01f;
+
         // Stich struct to contain the sitched together texture
         public struct Stich
         {       
@@ -90,9 +103,9 @@ namespace Streetview
         //
 
         // Loads a stich at a coordinate
-        public void LoadStich(int xCoordinate, int yCoordinate)
+        public void LoadStich(double lat, double lng)
         {
-            string combinedCoord = GetCombinedCoordinate(xCoordinate, yCoordinate);
+            string combinedCoord = GetCombinedCoordinate(lat, lng);
 
             // Secondly checks if it is in the dictionary
             bool inDict = HasStich(combinedCoord);
@@ -108,9 +121,7 @@ namespace Streetview
             {
                 StartCoroutine(AddStich(
                     _downloader.Images,
-                    _downloader.Size,
-                    _downloader.XMax,
-                    _downloader.YMax)
+                    _downloader.Size)
                 );
 
             }
@@ -132,23 +143,37 @@ namespace Streetview
         // Helper method for working with coordinates
         //
 
-        public string GetCombinedCoordinate(int xCoordinate, int yCoordinate)
+        public string GetCombinedCoordinate(double lat, double lng)
         {
-            return (xCoordinate.ToString() + "," + yCoordinate.ToString());
+            return (lat.ToString() + "," + lng.ToString());
+        }       
+
+        // Gets the closest Panorama to the coordinates given
+        private void GetClosestCoordinatesTo(double lat, double lng)
+        {
+            // We first start off 
+            for ()
+
+            //int sphereHeight = _height * 
         }
 
         //
         // Methods for creating stiches
         //
 
-        // Adds a stich
-        private IEnumerator AddStich(Boo.Lang.List<Boo.Lang.List<Texture2D>> images, int imageSize, int xCount, int yCount)
+        // Adds a stich at some coordinates by downloading it and stiching it
+        private IEnumerator AddStich(double lat, double lng, int imageSize)
         {
+            // Converts coordinates to panorama
+            string pano = _downloader.CoordinatesToPanorama(coordinates);
+
+            // Now
+
             // Creates a stich struct
             Stich s = new Stich();
 
             // Loads texture from 
-            Texture2D t = new Texture2D(imageSize * xCount, imageSize * yCount);
+            Texture2D t = new Texture2D(imageSize * images.Count, imageSize * images[0].Count);
             t.wrapMode = TextureWrapMode.Clamp;
 
             for (int y = 0; y < images.Count; y++)
@@ -185,16 +210,6 @@ namespace Streetview
 
             yield return null;
         }
-        
-        // Sitches together textures
-        private void StichTogether()
-        {
-            //int sphereHeight = _height * 
-            //int sphereWidth = 
-            //_sphereTexture.height = 
-        }
-	
-     
-      
+ 
     }
 }
