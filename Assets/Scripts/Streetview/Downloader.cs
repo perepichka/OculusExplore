@@ -20,7 +20,7 @@
 using System;
 using System.IO;
 using System.Net;
-using Boo.Lang;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Streetview
@@ -135,10 +135,7 @@ namespace Streetview
             List<List<Texture2D>> images = DownloadImages(pano, ZoomLevel);
 
             // Checks that we have the images
-            if (images == null)
-            {
-                return null;
-            }
+            return images;
 
         }
 

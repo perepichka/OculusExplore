@@ -18,9 +18,9 @@
 //  =====================================================================
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using NUnit.Framework.Constraints;
 using SharpConfig;
 using UnityEditor;
 using UnityEngine;
@@ -34,14 +34,17 @@ namespace Streetview
         // Constants
         //
 
+        // Image size for Google Streetview Images
+        private const int ImageSize = 500;
+
         // Min. Degree to which the coordinates will be incremented during movement
-        private const double CoordinateIncrement = 0.0001f;
+        private const float CoordinateIncrement = 0.0001f;
 
         // Max. Range of coordinates to look for during movement before giving up
         // Ideally this would be infinite, simply just going to the next available image,
         // But I somehow doubt it is a good idea to spam Google's servers with millions of requests
         // Considering we pass our API key to do this... 
-        private const double CoordinateMaxRange = 0.01f;
+        private const float CoordinateMaxRange = 0.01f;
 
         // Stich struct to contain the sitched together texture
         public struct Stich
@@ -52,16 +55,23 @@ namespace Streetview
             // Texture width, height
             public int Width, Height;
 
+            // Longitude and latitude
+            public double Lat, Lng;
+
+            // Panorama id for this stich
+            public string Panorama;
+
         }
 
         // Stiches containing textures
         public Dictionary<string, Stich> Stiches; 
 
+        // The stich that is loaded onto the sphere
+        public string CurrentStichCoordinates;
+
         // Downloader object
         private Downloader _downloader;
-
-        // Load a texture
-        public bool texEmpty;
+        private Controller _controller;
        
         // Use this for initialization
         void Start ()
@@ -69,8 +79,11 @@ namespace Streetview
             // Sets up stiches
             Stiches = new Dictionary<string, Stich>();
 
-            // Gets a reference to the downloader
+            CurrentStichCoordinates = null;
+
+            // Gets a reference to the other scripts
             _downloader = transform.GetComponent<Downloader>();
+            _controller = transform.GetComponent<Controller>();
 
             // Checks that we have the downloader
             if (!_downloader)
@@ -78,54 +91,74 @@ namespace Streetview
                 throw new Exception("No Downloader script found");
             }
 
-            // Sets tex empty
-            texEmpty = true;
         }
 
         // Update is called once per frame
         void Update()
         {
-
-            
-
-            if (Stiches.Count != 0 && texEmpty)
-            {
-                texEmpty = false;
-                GameObject.Find("Sphere").GetComponent<MeshRenderer>().material.mainTexture = Stiches[0].SphereTexture;
-
-                //Resources.
-            }
+ 
 
         }
 
         // 
-        // Methods for accessing stiche
+        // Methods for accessing stichs
         //
 
-        // Loads a stich at a coordinate
-        public void LoadStich(double lat, double lng)
+        // Moves in the direction to the next stich
+        public void Move(Vector2 direction)
         {
-            string combinedCoord = GetCombinedCoordinate(lat, lng);
 
-            // Secondly checks if it is in the dictionary
-            bool inDict = HasStich(combinedCoord);
+            Stich currentStich;
 
-            // If we don't have the stich, we are sad :( since our prediction system failed
-            // However, there is still a job to be done, so we have to download it
-            if (!inDict)
+            Stiches.TryGetValue(CurrentStichCoordinates, out currentStich);
+
+            // Gets the Lat and long
+            Vector2 point = new Vector2( (float) currentStich.Lat, (float) currentStich.Lng);
+
+            for(float d = 1.0f; d<CoordinateMaxRange; d+=CoordinateIncrement)
             {
-                _downloader.Download();
-            }
+                // Adds the vector times the offset and check its validity
+                point += (direction * d);
 
-            if (_downloader.ImagesReady)
-            {
-                StartCoroutine(AddStich(
-                    _downloader.Images,
-                    _downloader.Size)
+                // Converts point to string coords
+                string combinedCoords = GetCombinedCoordinate(point[0], point[1]);
+
+                // Cheaper to check if we have it than to send web request
+                
+                // Secondly checks if it is in the dictionary
+                if (HasStich(combinedCoords))
+                {
+                    SetCurrentStich(combinedCoords);
+                    break;
+                }
+
+                // Gets the panorama for these coordinates
+                string pano = _downloader.CoordinatesToPanorama(combinedCoords);
+
+                if (pano == null)
+                {
+                    // Go to the next possibility
+                    continue;
+                }
+
+                // Downloads the stiches and parses them
+                List<List<Texture2D>> texs = _downloader.Download(pano);
+                Texture2D tex = CombinedTextureList(texs, ImageSize);
+
+                // Loads the stich
+                AddStich(
+                    tex,
+                    combinedCoords,
+                    pano,
+                    point[0],
+                    point[1]
                 );
 
+                // Sets the current switch
+                SetCurrentStich(combinedCoords);
+                break;
             }
-
+            
         }
 
         // Check if we have the stich for the coordinate or if will need to be downloaded
@@ -143,18 +176,9 @@ namespace Streetview
         // Helper method for working with coordinates
         //
 
-        public string GetCombinedCoordinate(double lat, double lng)
+        public string GetCombinedCoordinate(float lat, float lng)
         {
             return (lat.ToString() + "," + lng.ToString());
-        }       
-
-        // Gets the closest Panorama to the coordinates given
-        private void GetClosestCoordinatesTo(double lat, double lng)
-        {
-            // We first start off 
-            for ()
-
-            //int sphereHeight = _height * 
         }
 
         //
@@ -162,16 +186,29 @@ namespace Streetview
         //
 
         // Adds a stich at some coordinates by downloading it and stiching it
-        private IEnumerator AddStich(double lat, double lng, int imageSize)
+        private void AddStich(Texture2D tex, string coordinates, string panoid, float lat, float lng)
         {
-            // Converts coordinates to panorama
-            string pano = _downloader.CoordinatesToPanorama(coordinates);
-
-            // Now
-
             // Creates a stich struct
             Stich s = new Stich();
 
+            // Keep these for later
+            s.Panorama = panoid;
+
+            // Sets the Stich texture
+            s.SphereTexture = tex;
+
+            // Set coords
+            s.Lat = lat;
+            s.Lng = lng;
+
+            // Adds the stich to the stich array
+            Stiches.Add(coordinates, s);
+
+        }
+
+        // Combines texture into another texture
+        public Texture2D CombinedTextureList(List<List<Texture2D>> images, int imageSize)
+        {
             // Loads texture from 
             Texture2D t = new Texture2D(imageSize * images.Count, imageSize * images[0].Count);
             t.wrapMode = TextureWrapMode.Clamp;
@@ -180,7 +217,6 @@ namespace Streetview
             {
                 for (int x = 0; x < images[y].Count; x++)
                 {
-                    
                     for (int w = 0; w < imageSize; w++)
                     {
                         for (int h = 0; h < imageSize; h++)
@@ -199,16 +235,21 @@ namespace Streetview
 
             t.Apply();
 
-            // Sets the Stich texture
-            s.SphereTexture = t;
+            return t;
+        }
 
-            // Adds the stich to the stich array
-            Stiches.Add(s);
+        public bool SetCurrentStich(string coordinates)
+        {
+            Stich s;
 
-            // Set the Downloader back to being ready
-            _downloader.ImagesReady = false;
-
-            yield return null;
+            if (Stiches.TryGetValue(coordinates, out s))
+            {
+                _controller.SetSphereTexture(s.SphereTexture);
+                CurrentStichCoordinates = coordinates;
+            }
+            
+            // The try to get the value failed
+            return false;
         }
  
     }

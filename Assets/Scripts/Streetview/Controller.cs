@@ -35,8 +35,9 @@ namespace Streetview
         // Members
         //
 
-        public bool CanMove;
+        private GameObject _sphere;s
 
+        public bool CanMove;
 
         private Sticher _sticherScript;
 
@@ -45,7 +46,7 @@ namespace Streetview
         void Start ()
         {
             _sticherScript = transform.GetComponent<Sticher>();
- 
+            _sphere = GameObject.Find("Sphere");
         }
 	
         // Update is called once per frame
@@ -72,5 +73,19 @@ namespace Streetview
             }
 
         }
-    }
+
+        //
+        // Getters and Setters
+        //
+
+        public void SetSphereTexture(Texture2D tex)
+        {
+            _sphere.GetComponent<MeshRenderer>().material.mainTexture = tex;
+        }
+
+        public Vector2 GetCameraDirection()
+        {
+            return new Vector2(0,0);
+        }
+    
 }
