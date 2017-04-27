@@ -78,6 +78,9 @@ namespace Streetview
                     {
                         throw new Exception();
                     }
+
+                    StartingLat = float.Parse(config.ParseLat());
+                    StartingLng = float.Parse(config.ParseLng());
                 }
                 catch (Exception e)
                 {

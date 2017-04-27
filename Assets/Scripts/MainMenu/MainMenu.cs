@@ -9,11 +9,14 @@ public class MainMenu : MonoBehaviour {
     //
     // Fields
     //
+    public GameObject Loading;
 
     private GameObject _cameraGameObject;
     private GameObject _videoGameObject;
     private GameObject _streetViewGameObject;
     private GameObject _kinectGameObject;
+
+
 
     private GameObject _setMenuItem;
 
@@ -88,9 +91,9 @@ public class MainMenu : MonoBehaviour {
                 SceneManager.LoadSceneAsync("Kinect");
             } else if (_setMenuItem == _streetViewGameObject)
             {
-                GameObject.Find("Loading").SetActive(true);
+                Loading.SetActive(true);
                 SceneManager.LoadSceneAsync("StreetView");
-                GameObject.Find("Loading").SetActive(false);
+                Loading.SetActive(false);
             }
         }
 	}

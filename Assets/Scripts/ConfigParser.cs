@@ -29,7 +29,46 @@ public class ConfigParser : MonoBehaviour {
     {
         // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
         var config = Configuration.LoadFromFile("Config\\init.ini");
-        var section = config["api"];
+        var section = config["streetview"];
         return section["API_KEY"].StringValue;
     }
+
+    public string ParseLat()
+    {
+        // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
+        var config = Configuration.LoadFromFile("Config\\init.ini");
+        var section = config["streetview"];
+        return section["LAT"].StringValue;
+    }
+
+    public string ParseLng()
+    {
+        // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
+        var config = Configuration.LoadFromFile("Config\\init.ini");
+        var section = config["streetview"];
+        return section["LNG"].StringValue;
+    }
+
+    public string ParseVideo()
+    {
+        // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
+        var config = Configuration.LoadFromFile("Config\\init.ini");
+        var section = config["video"];
+        return section["VIDEO"].StringValue;
+    }
+    public string ParseImage()
+    {
+        // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
+        var config = Configuration.LoadFromFile("Config\\init.ini");
+        var section = config["video"];
+        return section["IMAGE"].StringValue;
+    }
+    public string ParseMono()
+    {
+        // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
+        var config = Configuration.LoadFromFile("Config\\init.ini");
+        var section = config["video"];
+        return section["MONO"].StringValue;
+    }
+
 }

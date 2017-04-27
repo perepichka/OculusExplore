@@ -19,6 +19,7 @@
 
 using System;
 using System.Collections;
+using System.Xml.Serialization;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -49,6 +50,39 @@ namespace Video
         // Use this for initialization
         void Start ()
         {
+            // tries to import from config
+
+            ConfigParser config = transform.GetComponent<ConfigParser>();
+
+            string vidPath = config.ParseVideo();
+            string imgPath = config.ParseImage();
+            string isMono = config.ParseMono();
+
+            if (!string.IsNullOrEmpty(vidPath))
+            {
+                var rec = Resources.Load(vidPath);
+
+                if (rec != null)
+                {
+                    VideoClip = (VideoClip)rec;
+                }
+            } else if (!string.IsNullOrEmpty(imgPath))
+            {
+                var rec = Resources.Load(imgPath);
+
+                if (rec != null)
+                {
+                    VideoClip = (VideoClip)rec;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(isMono))
+            {
+                bool m = bool.Parse(isMono);
+
+                IsMono = m;
+            }
+
             // Gets references to the objects in the scene
             _audioSource = GetComponent<AudioSource>();
             _videoPlayer = GetComponent<UnityEngine.Video.VideoPlayer>();
