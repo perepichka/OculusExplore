@@ -91,6 +91,7 @@ namespace Streetview
 
         public int Size = 512;
 
+        // Deprecated values
         public string BaseUrl;
         public string FileName; 
 
@@ -215,19 +216,19 @@ namespace Streetview
         // Sets up image for download
         private List<List<Texture2D>> DownloadImages(string url, int zoomLevel)
         {
-            int XMax = 0;
-            int YMax = 0;
+            int xMax = 0;
+            int yMax = 0;
 
             // Sets up our values
             switch (zoomLevel)
             {
                 case 3:
-                    XMax = 7;
-                    YMax = 3;
+                    xMax = 7;
+                    yMax = 3;
                     break;
                 case 4:
-                    XMax = 13;
-                    YMax = 6;
+                    xMax = 13;
+                    yMax = 6;
                     break;
                 default:
                     return null;
@@ -236,11 +237,11 @@ namespace Streetview
             List<List<Texture2D>> images = new List<List<Texture2D>>();
 
             // Loops through creating the urls we will need
-            for (int y = 0; y < YMax; y++)
+            for (int y = 0; y < yMax; y++)
             {
                 List<Texture2D> imageRow = new List<Texture2D>();
 
-                for (int x = 0; x < XMax; x++)
+                for (int x = 0; x < xMax; x++)
                 {
                 
                     string tempDownloadValues = UrlDownloadValues.Replace("X", x.ToString()).Replace("Y", y.ToString()).Replace("Z", zoomLevel.ToString());

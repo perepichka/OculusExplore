@@ -29,11 +29,13 @@ namespace Streetview
         // Constants
         //
 
+        private static readonly Vector2[] Directions = {Vector2.up, Vector2.down, Vector2.right, Vector2.left};
+
         private const double LatitutdeDisplacement = 0.001f;
         private const double LongitudeDisplacement = 0.001f;
 
-        private const float DefaultStartingCoordinateLat = 45.5582384f;
-        private const float DefaultStartingCoordinateLng = -73.5488266f;
+        private const float DefaultStartingCoordinateLat = 45.5589642f;//45.5618409f;//45.5551925f;// 45.5582384f;
+        private const float DefaultStartingCoordinateLng = -73.4546582f;//-73.45338f;//-73.4666552f; //-73.5488266f;
 
         //
         // Public Fields
@@ -45,6 +47,8 @@ namespace Streetview
         public float StartingLng;
 
         public string StreeViewApiKey;
+
+        public bool snapping;
 
         //
         // Private Fields
@@ -107,7 +111,7 @@ namespace Streetview
                 Vector2.up /* random attempt direction */
             );
 
-            // Otherwise, we try to load defauts
+            // Otherwise, we try to load defaults
             if (!result)
             {
                 ResetCoordinate();
@@ -137,6 +141,10 @@ namespace Streetview
             {
                 MoveToModifiedDirection(Vector2.down);
             }
+            else if (Input.GetKeyDown("space") && CanMove)
+            {
+                MoveToCameraDirection();
+            }
         }
 
         //
@@ -148,23 +156,76 @@ namespace Streetview
             _sphere.GetComponent<MeshRenderer>().material.mainTexture = tex;
         }
 
-        // Moves to the direction specified direction
-        public void MoveToModifiedDirection(Vector2 direction)
-        {
-
-            // @TODO, make direction depend on camera lookat vec
-            Vector2 camDirection = GetCameraDirection();
-
-
-            _sticherScript.Move(direction);
-        }
-
         public Vector2 GetCameraDirection()
         {
             Vector3 lookAt = _oculusCamera.transform.forward;
 
             // Discards y from look at and returns it
-            return new Vector2(lookAt.x, lookAt.z);
+            Vector2 vec = new Vector2(lookAt.x, lookAt.z);
+
+            // We need a normalized vec
+            vec.Normalize();
+
+            Debug.Log(vec.x + " " + vec.y);
+
+            return vec;
+        }
+
+        //
+        // Movement related
+        //
+
+        // Moves to the direction specified direction
+        public void MoveToModifiedDirection(Vector2 direction)
+        {
+            // Movement should be relative to the LookAt vector
+            Vector2 camDirection = GetCameraDirection();
+
+            // Gets the modified camera direction
+            if (direction == Vector2.left)
+            {
+                direction = new Vector2(camDirection.y, -camDirection.x);
+            }
+            else if (direction == Vector2.right)
+            {
+                direction = new Vector2(-camDirection.y, camDirection.x);
+            }
+            else if (direction == Vector2.down)
+            {
+                direction = new Vector2(-camDirection.x, -camDirection.y);
+            }
+            else if (direction == Vector2.up)
+            {
+                direction = camDirection;
+            }
+
+            if (snapping)
+            {
+                // Now snap to the closest (ie the one that maximizes the dot product)
+                Vector2 direct = Vector2.up;
+                float maxDot = 0;
+                foreach (Vector2 dir in Directions)
+                {
+                    float dot = Vector2.Dot(direction, dir);
+                    if (dot > maxDot)
+                    {
+                        maxDot = dot;
+                        direct = dir; 
+                    }
+                }
+                direction = direct;
+            }
+
+            _sticherScript.Move(direction);
+        }
+
+        // Moves to a direction free of snapping to predefined ones
+        public void MoveToCameraDirection()
+        {
+            // Movement should be relative to the LookAt vector
+            Vector2 camDirection = GetCameraDirection();
+
+            _sticherScript.Move(camDirection);
         }
 
         // 

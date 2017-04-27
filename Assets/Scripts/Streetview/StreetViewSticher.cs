@@ -38,7 +38,7 @@ namespace Streetview
         private const int ImageSize = 512;
 
         // Min. Degree to which the coordinates will be incremented during movement
-        private const float CoordinateIncrement = 0.0001f;
+        private const float CoordinateIncrement = 0.0002f;
 
         // Max. tries of coordinates to look for during movement before giving up
         // Ideally this would be infinite, simply just going to the next available image,
