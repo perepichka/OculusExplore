@@ -32,8 +32,8 @@ namespace Streetview
         private const double LatitutdeDisplacement = 0.001f;
         private const double LongitudeDisplacement = 0.001f;
 
-        private const float DefaultStartingCoordinateLat = 45.5544263f;//45.5582384f;
-        private const float DefaultStartingCoordinateLng = -73.477401f;//-73.5488266f;
+        private const float DefaultStartingCoordinateLat = 45.5582384f;
+        private const float DefaultStartingCoordinateLng = -73.5488266f;
 
         //
         // Public Fields

@@ -35,7 +35,7 @@ namespace Streetview
         //
 
         // Image size for Google Streetview Images
-        private const int ImageSize = 500;
+        private const int ImageSize = 512;
 
         // Min. Degree to which the coordinates will be incremented during movement
         private const float CoordinateIncrement = 0.0001f;
@@ -44,7 +44,7 @@ namespace Streetview
         // Ideally this would be infinite, simply just going to the next available image,
         // But I somehow doubt it is a good idea to spam Google's servers with millions of requests
         // Considering we pass our API key to do this... 
-        private const float CoordinateMaxTries = 0.01f;
+        private const int CoordinateMaxTries = 100;
 
         // Stich struct to contain the sitched together texture
         public struct Stich
@@ -163,10 +163,26 @@ namespace Streetview
             // Gets the panorama for these coordinates
             string pano = _downloader.CoordinatesToPanorama(combinedCoords, _controller.StreeViewApiKey);
 
-            if (pano == null)
+            if (string.IsNullOrEmpty(pano))
             {
                 // Go to the next possibility
                 return false;
+            }
+
+            // Makes sure we don't already have this pano loaded under slightly differnt coords
+            string possibleCoords = GetPanoramaKey(pano);
+
+            if (!string.IsNullOrEmpty(possibleCoords))
+            {
+                if (possibleCoords == CurrentStichCoordinates)
+                {
+                    // If it is the current one, we need to keep looking
+                    return false;
+                }
+
+                // Otherwise we load the one it is
+                SetCurrentStich(possibleCoords);
+                return true;
             }
 
             // Downloads the stiches and parses them
@@ -196,6 +212,35 @@ namespace Streetview
                 return true;
             }
             return false;
+        }
+
+        // Checks if the panorama is currently loaded
+        public bool IsPanoramaLoaded(string panoid)
+        {
+            Stich s;
+
+            if (Stiches.TryGetValue(CurrentStichCoordinates, out s))
+            {
+                if (s.Panorama == panoid)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Gets the coordinate key associated to the loaded panorama. Null if not in dict
+        public string GetPanoramaKey(string panoid)
+        { 
+            // Checks the dict for the key
+            foreach (KeyValuePair<string, Stich> entry in Stiches)
+            {
+                if (entry.Value.Panorama == panoid)
+                {
+                    return entry.Key;
+                }
+            }
+            return null;
         }
 
         //
@@ -277,6 +322,6 @@ namespace Streetview
             // The try to get the value failed
             return false;
         }
- 
+
     }
 }
