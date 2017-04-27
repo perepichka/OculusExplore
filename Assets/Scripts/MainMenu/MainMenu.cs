@@ -85,7 +85,7 @@ public class MainMenu : MonoBehaviour {
                 SceneManager.LoadScene("Video");
             } else if (_setMenuItem == _kinectGameObject)
             {
-                SceneManager.LoadScene("Kinect");
+                SceneManager.LoadSceneAsync("Kinect");
             } else if (_setMenuItem == _streetViewGameObject)
             {
                 GameObject.Find("Loading").SetActive(true);
