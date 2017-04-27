@@ -29,7 +29,7 @@ namespace Streetview
         // Constants
         //
 
-        private static readonly Vector2[] Directions = {Vector2.up, Vector2.down, Vector2.right, Vector2.left};
+        public static readonly Vector2[] Directions = {Vector2.up, Vector2.down, Vector2.right, Vector2.left};
 
         private const double LatitutdeDisplacement = 0.001f;
         private const double LongitudeDisplacement = 0.001f;
@@ -105,21 +105,27 @@ namespace Streetview
                 Debug.Log(e);
             }
 
+            Vector2 p = new Vector2(StartingLat, StartingLng);
+
             // Starts the Sticher script by setting up the starting position
-            bool result =_sticherScript.AttemptAddingPoint(
-                new Vector2(StartingLat, StartingLng),
-                Vector2.up /* random attempt direction */
+            bool result = _sticherScript.AttemptAddingPoint(
+                p, Vector2.up, /* random attempt direction */
+                true,
+                false
             );
 
             // Otherwise, we try to load defaults
             if (!result)
             {
                 ResetCoordinate();
+                p = new Vector2(StartingLat, StartingLng);
                 _sticherScript.AttemptAddingPoint(
-                    new Vector2(StartingLat, StartingLng),
-                    Vector2.up /* random attempt direction */
+                    p, Vector2.up /* random attempt direction */,
+                    true,
+                    false
                 );
             }
+
         }
 
         // Update is called once per frame
