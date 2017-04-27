@@ -90,7 +90,11 @@ namespace Video
 	
         // Update is called once per frame
         void Update () {
-
+            // Back to main menu
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+            }
             // Video controls
             if (VideoClip)
             {

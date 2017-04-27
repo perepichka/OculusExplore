@@ -19,6 +19,7 @@
 
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Streetview
 {
@@ -131,6 +132,13 @@ namespace Streetview
         // Update is called once per frame
         void Update()
         {
+
+            // Back to main menu
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                SceneManager.LoadScene("MainMenu");
+            }
+
             if (Input.GetKeyDown("left") && CanMove)
             {
                 MoveToModifiedDirection(Vector2.left);

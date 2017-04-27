@@ -79,6 +79,12 @@ namespace KinectVR
         void Update()
         {
 
+            // Back to main menu
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+            }
+
             if (_sensor == null)
             {
                 return;
