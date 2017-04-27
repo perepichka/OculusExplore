@@ -27,7 +27,7 @@ using UnityEngine;
 
 namespace Streetview
 {
-    public class Sticher : MonoBehaviour
+    public class StreetViewSticher : MonoBehaviour
     {
 
         // 
@@ -40,11 +40,11 @@ namespace Streetview
         // Min. Degree to which the coordinates will be incremented during movement
         private const float CoordinateIncrement = 0.0001f;
 
-        // Max. Range of coordinates to look for during movement before giving up
+        // Max. tries of coordinates to look for during movement before giving up
         // Ideally this would be infinite, simply just going to the next available image,
         // But I somehow doubt it is a good idea to spam Google's servers with millions of requests
         // Considering we pass our API key to do this... 
-        private const float CoordinateMaxRange = 0.01f;
+        private const float CoordinateMaxTries = 0.01f;
 
         // Stich struct to contain the sitched together texture
         public struct Stich
@@ -70,9 +70,9 @@ namespace Streetview
         public string CurrentStichCoordinates;
 
         // Downloader object
-        private Downloader _downloader;
-        private Controller _controller;
-       
+        private StreetViewDownloader _downloader;
+        private StreetViewController _controller;
+
         // Use this for initialization
         void Start ()
         {
@@ -82,15 +82,14 @@ namespace Streetview
             CurrentStichCoordinates = null;
 
             // Gets a reference to the other scripts
-            _downloader = transform.GetComponent<Downloader>();
-            _controller = transform.GetComponent<Controller>();
+            _downloader = transform.GetComponent<StreetViewDownloader>();
+            _controller = transform.GetComponent<StreetViewController>();
 
             // Checks that we have the downloader
             if (!_downloader)
             {
                 throw new Exception("No Downloader script found");
             }
-
         }
 
         // Update is called once per frame
@@ -107,7 +106,6 @@ namespace Streetview
         // Moves in the direction to the next stich
         public void Move(Vector2 direction)
         {
-
             Stich currentStich;
 
             Stiches.TryGetValue(CurrentStichCoordinates, out currentStich);
@@ -115,50 +113,78 @@ namespace Streetview
             // Gets the Lat and long
             Vector2 point = new Vector2( (float) currentStich.Lat, (float) currentStich.Lng);
 
-            for(float d = 1.0f; d<CoordinateMaxRange; d+=CoordinateIncrement)
+            // We start looking at the next point already
+            AttemptAddingPoint(
+                point + direction * CoordinateIncrement,
+                direction
+            );
+        }
+
+        // Attempts to add the point, moving in the direction each time it isn't succesful,
+        // until it either succeeds or runs out of attempts.
+        public bool AttemptAddingPoint(Vector2 point, Vector2 direction)
+        {
+            Vector2 offset = direction * CoordinateIncrement;
+            int tries = 0;
+
+            while(tries < CoordinateMaxTries)
             {
+                bool result = AddPoint(point);
+                if (result)
+                {
+                    return true;
+                }
+
                 // Adds the vector times the offset and check its validity
-                point += (direction * d);
+                point += offset;
 
-                // Converts point to string coords
-                string combinedCoords = GetCombinedCoordinate(point[0], point[1]);
-
-                // Cheaper to check if we have it than to send web request
-                
-                // Secondly checks if it is in the dictionary
-                if (HasStich(combinedCoords))
-                {
-                    SetCurrentStich(combinedCoords);
-                    break;
-                }
-
-                // Gets the panorama for these coordinates
-                string pano = _downloader.CoordinatesToPanorama(combinedCoords);
-
-                if (pano == null)
-                {
-                    // Go to the next possibility
-                    continue;
-                }
-
-                // Downloads the stiches and parses them
-                List<List<Texture2D>> texs = _downloader.Download(pano);
-                Texture2D tex = CombinedTextureList(texs, ImageSize);
-
-                // Loads the stich
-                AddStich(
-                    tex,
-                    combinedCoords,
-                    pano,
-                    point[0],
-                    point[1]
-                );
-
-                // Sets the current switch
-                SetCurrentStich(combinedCoords);
-                break;
+                tries++;
             }
+            return false;
+        }
+
+        // Adds the coordinate point. True if successful, false otherwise
+        public bool AddPoint(Vector2 point)
+        {
+            // Converts point to string coords
+            string combinedCoords = GetCombinedCoordinate(point[0], point[1]);
+
+            // Cheaper to check if we have it than to send web request
             
+            // Secondly checks if it is in the dictionary
+            if (HasStich(combinedCoords))
+            {
+                SetCurrentStich(combinedCoords);
+
+                // If set succeeds then we are done
+                return true;
+            }
+
+            // Gets the panorama for these coordinates
+            string pano = _downloader.CoordinatesToPanorama(combinedCoords, _controller.StreeViewApiKey);
+
+            if (pano == null)
+            {
+                // Go to the next possibility
+                return false;
+            }
+
+            // Downloads the stiches and parses them
+            List<List<Texture2D>> texs = _downloader.Download(pano);
+            Texture2D tex = CombineTextureList(texs, ImageSize);
+
+            // Loads the stich
+            AddStich(
+                tex,
+                combinedCoords,
+                pano,
+                point[0],
+                point[1]
+            );
+
+            // Sets the current switch
+            SetCurrentStich(combinedCoords);
+            return true;
         }
 
         // Check if we have the stich for the coordinate or if will need to be downloaded
@@ -207,10 +233,10 @@ namespace Streetview
         }
 
         // Combines texture into another texture
-        public Texture2D CombinedTextureList(List<List<Texture2D>> images, int imageSize)
+        public Texture2D CombineTextureList(List<List<Texture2D>> images, int imageSize)
         {
             // Loads texture from 
-            Texture2D t = new Texture2D(imageSize * images.Count, imageSize * images[0].Count);
+            Texture2D t = new Texture2D(imageSize * images[0].Count, imageSize * images.Count);
             t.wrapMode = TextureWrapMode.Clamp;
 
             for (int y = 0; y < images.Count; y++)

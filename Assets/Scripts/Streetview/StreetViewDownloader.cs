@@ -21,6 +21,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace Streetview
@@ -51,7 +52,7 @@ namespace Streetview
     }
 
 
-    public class Downloader : MonoBehaviour
+    public class StreetViewDownloader : MonoBehaviour
     {
 
         //
@@ -80,6 +81,9 @@ namespace Streetview
         // Base file path where to store the images (deprecated)
         private const string FilePathBase = @"Assets\Resources\Streetview\Tiles\";
 
+        // Default Zoom level
+        private const int DefaultZoomLevel = 4;
+
 
         //
         // Members
@@ -97,24 +101,10 @@ namespace Streetview
         // API stuff
         public bool StreetViewApiEnabled;
 
-        private string _apiKey;
-
         // Use this for initialization
         void Start ()
         {
-            // Fetches API key
-            try
-            {
-                _apiKey = transform.GetComponent<ConfigParser>().ApiKey;
-                StreetViewApiEnabled = true;
-            } catch (Exception e)
-            {
-                // Logs the stack trace
-                Debug.Log("Cannot find API Key, reverting to mode without API access");
-                Debug.Log(e.StackTrace);
-                _apiKey = null;
-                StreetViewApiEnabled = false;
-            }
+            ZoomLevel = DefaultZoomLevel;
         }
 	
         // Update is called once per frame
@@ -176,7 +166,7 @@ namespace Streetview
         }
 
         // Gets a panorama ID from two coordinates
-        public string CoordinatesToPanorama(string coordinates)
+        public string CoordinatesToPanorama(string coordinates, string apiKey)
         {
             // Checks if we have API access
             if (!StreetViewApiEnabled)
@@ -185,7 +175,7 @@ namespace Streetview
             }
 
             // Appends coordinates to panorma id
-            string newUrl = UrlVerification + coordinates + UrlApiKey + _apiKey;
+            string newUrl = UrlVerification + coordinates + UrlApiKey + apiKey;
 
             // Attempts to get the pano id from json found on the site
             string jsonStr = DownloadStreetViewValidationData(newUrl);
@@ -203,14 +193,12 @@ namespace Streetview
             string panoid = g.pano_id;
 
             // Final verification
-            if (string.IsNullOrEmpty(panoid))
+            if (!string.IsNullOrEmpty(panoid))
             {
                 return panoid;
             }
-            else
-            {
-                return null;
-            }
+
+            return null;
 
         }
 
@@ -276,6 +264,11 @@ namespace Streetview
             string jsonData = null;
 
             var webReader = new WWW(url);
+
+            while (!webReader.isDone)
+            {
+                Thread.Sleep(500);
+            }
 
             if (webReader.text != null && webReader.error == null)
             {

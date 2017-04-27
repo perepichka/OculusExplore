@@ -25,13 +25,11 @@ using SharpConfig;
 public class ConfigParser : MonoBehaviour {
 
     // Google Streetview API Key
-    public string ApiKey;
-    
-    void ParseConfig()
+    public string ParseConfig()
     {
         // Loads api key from init file. Need to specify one in order to have more than 100 reqs"
         var config = Configuration.LoadFromFile("Config\\init.ini");
         var section = config["api"];
-        ApiKey = section["API_KEY"].StringValue;
+        return section["API_KEY"].StringValue;
     }
 }
