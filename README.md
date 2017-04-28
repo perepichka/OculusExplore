@@ -1,7 +1,7 @@
 # OculusExplore
 OculusExplore is virtual reality based project that allows users to explore VR in 3 differing modes using. The project leverages several technologies including the Oculus Rift, the Microsoft Kinect, the Unity game engine, as well as Google Streetview and its respective public API. The first mode allows users to load existing VR content such as video or images, in both 2D and 3D content, and visualize it. The second mode allows users to view 2D streetview images using the Oculus Rift and navigate throughout them. The third mode allows users to load a mesh from the Microsoft Kinect and visualize it within a game world, all in VR.
 
-## Description
+## Modes
 
 Implements three different modes:
 
