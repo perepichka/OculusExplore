@@ -18,6 +18,7 @@
 //  =====================================================================
 
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Windows.Kinect;
 using UnityEngine;
 
@@ -56,7 +57,7 @@ namespace KinectVR
         private int[][] _triangles;
 
         // Kinect related stuff
-        private KinectSource _multiManager;
+        private GameObject _multiManager;
 
         // Max distance between two vertices in a triangle after which it stops being rendered in the mesh
         private const int TriangleThreshold = 20;
@@ -151,20 +152,14 @@ namespace KinectVR
                             ((float) (y + i * (baseRowsPerMesh - 1) )/ (float) height)
                         );
 
-                        // Skip the last row/col
                         if (x != (width - 1) && y != (rowsPerMesh - 1))
-                        {
-                            int topLeft = index;
-                            int topRight = topLeft + 1;
-                            int bottomLeft = topLeft + width;
-                            int bottomRight = bottomLeft + 1;
-
-                            _triangles[i][triangleIndex++] = topLeft;
-                            _triangles[i][triangleIndex++] = topRight;
-                            _triangles[i][triangleIndex++] = bottomLeft;
-                            _triangles[i][triangleIndex++] = bottomLeft;
-                            _triangles[i][triangleIndex++] = topRight;
-                            _triangles[i][triangleIndex++] = bottomRight;
+                        { 
+                            _triangles[i][triangleIndex++] = index;
+                            _triangles[i][triangleIndex++] = index + 1;
+                            _triangles[i][triangleIndex++] = index + width;
+                            _triangles[i][triangleIndex++] = index + width;
+                            _triangles[i][triangleIndex++] = index + 1;
+                            _triangles[i][triangleIndex++] = (index + width) + 1;
                         }
                     }
                 }

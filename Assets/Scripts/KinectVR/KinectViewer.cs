@@ -36,23 +36,8 @@ namespace KinectVR
         // in order to fit the Mesh within unity without downsampling
         private KinectMesh _kinectMesh;
 
-        private Vector3[] _vertices;
-        private Vector2[] _uv;
-
-        // Array of Default triangle indices.
-        private int[] _defaultTriangles;
-
-        // Source of Kinect info
-        private KinectSource _multiManager;
-
-        // Max distance between two vertices in a triangle after which it stops being rendered in the mesh
-        private int TriangleThreshold = 10;
-    
-        // Works for powers of 2 past 1 ie 2^1, 2^2 etc.
-        private const int DownSampleSize = 2;
-
-        private const double DepthScale = 0.1f;
-
+        // Source of Kinect info, from Kinect files
+        private MultiSourceManager _multiManager;
 
         void Start()
         {
@@ -85,19 +70,9 @@ namespace KinectVR
                 UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
             }
 
-            if (_sensor == null)
-            {
-                return;
-            }
-			
-            if (KinectSource == null)
-            {
-                return;
-            }
-        
-            _multiManager = KinectSource.GetComponent<KinectSource>();
+            _multiManager = KinectSource.GetComponent<MultiSourceManager>();
 
-            if (_multiManager == null)
+            if (_sensor == null || KinectSource == null || _multiManager == null)
             {
                 return;
             }
@@ -113,11 +88,6 @@ namespace KinectVR
     
         void OnApplicationQuit()
         {
-            if (_mapper != null)
-            {
-                _mapper = null;
-            }
-        
             if (_sensor != null)
             {
                 if (_sensor.IsOpen)
