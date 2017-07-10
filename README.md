@@ -11,6 +11,10 @@ Implements three different modes:
 
 * Kinect viewer (requires Microsoft Kinect and Kinect for Windows SDK 2.0)
 
+## Demo
+
+A brief demonstration video of OculusExplore can be found here: https://youtu.be/6NarkiaQwtY
+
 ## Setup
 
 To run the project, some software is required:
